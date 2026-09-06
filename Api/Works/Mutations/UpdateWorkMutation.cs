@@ -56,9 +56,11 @@ public record UpdateWorkInput : IBasicEntityMetadata
     public required Optional<List<Guid>?> AuthorIds { get; init; }
 
     public class UpdateWorkInputValidator : AbstractValidator<UpdateWorkInput>
-    public class UpdateWorkInputValidator : AbstractValidator<UpdateWorkInput>, IRequiresOwnScopeValidator
     {
+        public UpdateWorkInputValidator(PGContext db, ICurrentUserId userId, IEFTransactionDIAccessorService tx)
         {
+            RuleFor(w => w).MustAsync(async (_, ct) => { await tx.BeginOrGetTransactionAsync(); return true; });
+
             RuleFor(w => w.Id).IdMustExist(db.Works, userId.Id);
 
             RuleFor(w => w.RowVersion).RowVersionMustMatch(db.Works);
@@ -71,5 +73,6 @@ public record UpdateWorkInput : IBasicEntityMetadata
             RuleFor(w => w.AuthorIds.Value!).IdsMustExist(db.Authors, userId.Id).WhenOptionalSet(w => w.AuthorIds);
         }
     }
-}
 
+
+}

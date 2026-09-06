@@ -8,6 +8,7 @@ using System.Text;
 using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
+using Api.Database.Utils;
 
 using FairyBread;
 
@@ -29,8 +30,12 @@ public static partial class AuthMutations
 {
 
     [AllowAnonymous]
-    public static async Task<LoginPayload> LoginMutation([Service] PGContext db, LoginInput input)
+    public static async Task<LoginPayload> LoginMutation(
+            [Service] PGContext db,
+            [Service] IEFTransactionDIAccessorService txAccessor,
+            LoginInput input)
     {
+        var tx = await txAccessor.BeginOrGetTransactionAsync();
         UserEF? user = await db.Users.Where(u => u.Email == input.Email)
            .FirstOrDefaultAsync();
 
@@ -38,6 +43,7 @@ public static partial class AuthMutations
                 Argon2id.VerifyHash(user.PasswordHash, Encoding.UTF8.GetBytes(input.Password.Normalize())))
         {
             var token = await LoginUtils.CreateUserSession(user.Id, input.ClientName, db);
+            await tx.CommitAsync();
             return new(UserMapper.ToDto(user), token);
         }
 
@@ -48,8 +54,13 @@ public static partial class AuthMutations
     }
 
     [AllowAnonymous]
-    public static async Task<LoginPayload> RegisterMutation([Service] PGContext db, RegisterInput input)
+    public static async Task<LoginPayload> RegisterMutation(
+            [Service] PGContext db,
+            [Service] IEFTransactionDIAccessorService txAccessor,
+            RegisterInput input)
     {
+        var tx = await txAccessor.BeginOrGetTransactionAsync();
+
         var password_bytes = Encoding.UTF8.GetBytes(input.Password.Normalize());
         var hash_chars = new char[Argon2id.HashSize];
         Argon2id.ComputeHash(hash_chars, password_bytes, ARGON2ID_ITER, ARGON2ID_MEM_BYTES);
@@ -70,6 +81,7 @@ public static partial class AuthMutations
         await db.Users.AddAsync(user);
         string token = await LoginUtils.CreateUserSession(user.Id, input.ClientName, db);
         await db.SaveChangesAsync();
+        await tx.CommitAsync();
 
         return new(UserMapper.ToDto(user), token);
     }
@@ -101,8 +113,10 @@ public static class AuthMutationsUtils
             );
     public class RegisterInputValidator : AbstractValidator<RegisterInput>, IRequiresOwnScopeValidator
     {
-        public RegisterInputValidator(PGContext db)
+        public RegisterInputValidator(PGContext db, IEFTransactionDIAccessorService tx)
         {
+            RuleFor(w => w).MustAsync(async (_, ct) => { await tx.BeginOrGetTransactionAsync(); return true; });
+
             RuleFor(r => r.Email)
                 .Must(e => new EmailAddressAttribute().IsValid(e))
                 .WithMessage("Email is invalid");
