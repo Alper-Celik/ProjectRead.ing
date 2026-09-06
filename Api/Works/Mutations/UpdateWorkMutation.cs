@@ -5,6 +5,7 @@
 
 using Api.Auth.Utils;
 using Api.Database;
+using Api.Database.Utils;
 using Api.Utils;
 
 using FairyBread;
@@ -15,6 +16,23 @@ using NodaTime;
 
 namespace Api.Works.Mutations;
 
+[MutationType]
+public static partial class UpdateWorkMutations
+{
+    public static async Task<UpdateWorkPayload> UpdateWorkMutation(
+            [Service] PGContext db,
+            [Service] ICurrentUserId userId,
+            [Service] IEFTransactionDIAccessorService txGetter,
+            CancellationToken ct,
+            UpdateWorkInput input
+            )
+    {
+        var tx = await txGetter.BeginOrGetTransactionAsync();
+        db.Works.Find()
+
+        await tx.CommitAsync();
+    }
+}
 
 public record UpdateWorkPayload(
         Queries.Work Work
@@ -37,9 +55,9 @@ public record UpdateWorkInput : IBasicEntityMetadata
     public required Optional<List<Guid>?> TagIds { get; init; }
     public required Optional<List<Guid>?> AuthorIds { get; init; }
 
+    public class UpdateWorkInputValidator : AbstractValidator<UpdateWorkInput>
     public class UpdateWorkInputValidator : AbstractValidator<UpdateWorkInput>, IRequiresOwnScopeValidator
     {
-        public UpdateWorkInputValidator(PGContext db, ICurrentUserId userId)
         {
             RuleFor(w => w.Id).IdMustExist(db.Works, userId.Id);
 

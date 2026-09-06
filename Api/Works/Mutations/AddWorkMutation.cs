@@ -58,14 +58,14 @@ public record AddWorkInput
 
     public class AddWorkInputValidator : AbstractValidator<AddWorkInput>, IRequiresOwnScopeValidator
     {
-        public AddWorkInputValidator(PGContext db)
+        public AddWorkInputValidator(PGContext db, ICurrentUserId userId)
         {
             RuleFor(w => w.TagIds).MustBeDistinct(nameof(TagIds));
-            RuleFor(w => w.TagIds).IdsMustExist(db.WorkTags);
+            RuleFor(w => w.TagIds).IdsMustExist(db.WorkTags, userId.Id);
 
 
             RuleFor(w => w.AuthorIds).MustBeDistinct(nameof(AuthorIds));
-            RuleFor(w => w.AuthorIds).IdsMustExist(db.Authors);
+            RuleFor(w => w.AuthorIds).IdsMustExist(db.Authors, userId.Id);
         }
     }
 }
