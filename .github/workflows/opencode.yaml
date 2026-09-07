@@ -48,9 +48,7 @@ jobs:
             keep-env-derivations = true
             keep-outputs = true
 
-      - run: ../opencode-shell.sh -c "echo load nix env"
-
-      - wait: nuget-cache
+      - run: .github/opencode-shell.sh -c "echo load nix env"
 
       - name: Run Services
         id: services
@@ -74,6 +72,8 @@ jobs:
             }
           }
           EOF
+
+      - wait: nuget-cache
 
       - name: Run OpenCode
         uses: anomalyco/opencode/github@latest
