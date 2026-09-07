@@ -14,7 +14,7 @@ public class UserTokenEF
 {
     public const string PermissionBitsType = "PermissionBitsType";
 
-    [ForeignKey(nameof(UserEF))]
+    [ForeignKey(nameof(Owner))]
     public Guid UserId { get; set; }
 
     [Key]
@@ -25,4 +25,7 @@ public class UserTokenEF
     public Instant CreationTime { get; set; }
 
     public Instant? LastUsed { get; set; }
+
+    // Navigation Properties
+    public UserEF Owner { get; set; } = null!;
 }
