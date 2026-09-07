@@ -48,7 +48,7 @@ public static class ValidatorUtils
                         .Distinct()
                         .Order()
                         .ToArrayAsync())
-                            .SequenceEqual(ids.Distinct());
+                            .SequenceEqual(ids.Distinct().Order());
                 })
             .WithMessage($"{nameof(TTarget)} ids must exist")
             .WithErrorCode(ErrorCodes.IDS_DOES_NOT_EXIST);
@@ -64,7 +64,7 @@ public static class ValidatorUtils
                     {
                         q = q.Where(t => t.OwnerId == ownerId);
                     }
-                    return q.Any();
+                    return await q.AnyAsync(ct);
                 })
             .WithMessage($"{nameof(TTarget)} id must exist")
             .WithErrorCode(ErrorCodes.ID_DOES_NOT_EXIST);

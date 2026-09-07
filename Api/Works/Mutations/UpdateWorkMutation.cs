@@ -3,14 +3,14 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 
+using Api.Auth.Handlers;
+using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
 using Api.Database.Utils;
 using Api.Utils;
 using Api.Works.Models;
 using Api.Works.Queries;
-
-using FairyBread;
 
 using FluentValidation;
 
@@ -21,6 +21,9 @@ namespace Api.Works.Mutations;
 [MutationType]
 public static partial class UpdateWorkMutations
 {
+    [PermissionCheckAuthorize(
+            UserPermissionBits.WorkRead
+            | UserPermissionBits.WorkWrite)]
     public static async Task<UpdateWorkPayload> UpdateWorkMutation(
             [Service] PGContext db,
             [Service] IEFTransactionDIAccessorService txGetter,

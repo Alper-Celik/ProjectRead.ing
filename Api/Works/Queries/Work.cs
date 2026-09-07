@@ -2,6 +2,8 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+using Api.Auth.Handlers;
+using Api.Auth.Utils;
 using Api.Database;
 
 using GreenDonut.Data;
@@ -16,16 +18,22 @@ namespace Api.Works.Queries;
 public static partial class WorkQuery
 {
 
+    [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkRead)]
     [UseFiltering]
     [UseSorting]
     public static async Task<PageConnection<Work>> GetWorks(
-            [Service] PGContext db,
-            CancellationToken ct,
-            QueryContext<Work> qc,
-            PagingArguments pagingArguments
-            )
+        [Service] PGContext db,
+        [Service] ICurrentUserId userId,
+        CancellationToken ct,
+        QueryContext<Work> qc,
+        PagingArguments pagingArguments
+        )
     {
-        return await db.Works.ProjectToDto().With(qc).ToPageAsync(pagingArguments, cancellationToken: ct);
+        return await db.Works
+            .Where(w => w.OwnerId == userId.Id)
+            .ProjectToDto()
+            .With(qc)
+            .ToPageAsync(pagingArguments, cancellationToken: ct);
     }
 
 }

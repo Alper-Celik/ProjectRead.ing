@@ -26,7 +26,7 @@ public class WorkTag : IDbEntityMetadata
     public NodaTime.Instant MetadataAddedAt { get; set; }
     public NodaTime.Instant MetadataUpdatedAt { get; set; }
     [MapperIgnore]
-    [ForeignKey(nameof(UserEF))]
+    [ForeignKey(nameof(Owner))]
     public Guid OwnerId { get; set; }
 
     public required string[] TagNamespace { get; set; }

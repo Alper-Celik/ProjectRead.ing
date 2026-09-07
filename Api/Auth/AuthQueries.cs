@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+using Api.Auth.Handlers;
 using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
@@ -25,6 +26,7 @@ public partial class AuthQueries
 
     public record RegisterInfo(bool CanRegisterAsAdmin);
 
+    [PermissionCheckAuthorize(UserPermissionBits.UserRead)]
     public static async Task<AuthQueriesUtils.User> GetCurrentUser([Service] PGContext db, [Service] ICurrentUserId id)
     {
         return AuthQueriesUtils.UserMapper.ToDto(db.Users.Find(id.Id)!);

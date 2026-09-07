@@ -25,7 +25,7 @@ public class Author : IDbEntityMetadata
     public NodaTime.Instant MetadataAddedAt { get; set; }
     public NodaTime.Instant MetadataUpdatedAt { get; set; }
     [MapperIgnore]
-    [ForeignKey(nameof(UserEF))]
+    [ForeignKey(nameof(Owner))]
     public Guid OwnerId { get; set; }
 
     public string? FirstName { get; set; }
@@ -39,6 +39,8 @@ public class Author : IDbEntityMetadata
     // Navigation Properties
     [MapperIgnore]
     public List<Work> Works { get; set; } = [];
+    [MapperIgnore]
+    public UserEF Owner { get; set; } = null!;
 
 }
 

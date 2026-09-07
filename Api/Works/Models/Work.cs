@@ -25,7 +25,7 @@ public class Work : IDbEntityMetadata
     public NodaTime.Instant MetadataAddedAt { get; set; }
     public NodaTime.Instant MetadataUpdatedAt { get; set; }
     [MapperIgnore]
-    [ForeignKey(nameof(UserEF))]
+    [ForeignKey(nameof(Owner))]
     public Guid OwnerId { get; set; }
 
     public required string Title { get; set; }
@@ -46,6 +46,9 @@ public class Work : IDbEntityMetadata
     public List<WorkTag_Work> WorkTag_Works { get; set; } = [];
     [MapperIgnore]
     public List<Work_Author> Work_Authors { get; set; } = [];
+
+    [MapperIgnore]
+    public UserEF Owner { get; set; } = null!;
 }
 
 public record WorkIdentifier(

@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik <alper@alper-celik.dev>
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
+using Api.Auth.Handlers;
 using Api.Auth.Utils;
 using Api.Database;
 using Api.Utils;
@@ -23,6 +24,7 @@ namespace Api.Works.Mutations;
 [MutationType]
 public static partial class AddWorkMutations
 {
+    [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkWrite)]
     public static async Task<AddWorkPayload> AddWorkMutation(
             [Service] PGContext db,
             [Service] ICurrentUserId userId,
