@@ -48,7 +48,13 @@ public static partial class AuthQueriesUtils
             bool Admin) : IEntityMetadata
     {
         public static byte IdPostfix => UserEF.IdPostfix;
-        public static async Task<User?> GetAsync([Service] PGContext db, Guid id, CancellationToken ct) => UserMapper.ToDto(await db.Users.FindAsync([id], cancellationToken: ct));
+
+        [PermissionCheckAuthorize(UserPermissionBits.UserRead)]
+        public static async Task<User?> GetAsync([Service] PGContext db, Guid id, CancellationToken ct)
+        {
+            var user = await db.Users.FindAsync([id], cancellationToken: ct);
+            return user?.Id == id ? UserMapper.ToDto(user) : null;
+        }
     }
 
 
