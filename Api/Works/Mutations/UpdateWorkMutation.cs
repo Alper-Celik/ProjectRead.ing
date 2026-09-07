@@ -7,6 +7,8 @@ using Api.Auth.Utils;
 using Api.Database;
 using Api.Database.Utils;
 using Api.Utils;
+using Api.Works.Models;
+using Api.Works.Queries;
 
 using FairyBread;
 
@@ -21,16 +23,21 @@ public static partial class UpdateWorkMutations
 {
     public static async Task<UpdateWorkPayload> UpdateWorkMutation(
             [Service] PGContext db,
-            [Service] ICurrentUserId userId,
             [Service] IEFTransactionDIAccessorService txGetter,
             CancellationToken ct,
             UpdateWorkInput input
             )
     {
         var tx = await txGetter.BeginOrGetTransactionAsync();
-        db.Works.Find()
+        var work = (await db.Works.FindAsync([input.Id], cancellationToken: ct))!;
+
+        UpdateWorkInput.ApplyToWork(work, input);
+        work.RowVersion += 1;
+
+        await db.SaveChangesAsync(cancellationToken: ct);
 
         await tx.CommitAsync();
+        return new UpdateWorkPayload(WorkMapper.ToDto(work));
     }
 }
 
@@ -74,5 +81,29 @@ public record UpdateWorkInput : IBasicEntityMetadata
         }
     }
 
+    public static void ApplyToWork(Models.Work work, UpdateWorkInput input)
+    {
+        if (input.Title.HasValue)
+            work.Title = input.Title.Value;
+
+        if (input.Description.HasValue)
+            work.Description = input.Description.Value;
+
+        if (input.WorkPublishedAt.HasValue)
+            work.WorkPublishedAt = input.WorkPublishedAt.Value?.InUtc();
+
+        if (input.WorkUpdatedAt.HasValue)
+            work.WorkUpdatedAt = input.WorkUpdatedAt.Value?.InUtc();
+
+        if (input.WorkIdentifiers.HasValue)
+            work.WorkIdentifiers = input.WorkIdentifiers.Value?.Select(WorkMapper.FromWorkIdDto).ToList() ?? [];
+
+
+        if (input.TagIds.HasValue)
+            work.WorkTag_Works = input.TagIds.Value?.Select(t => new WorkTag_Work(work.Id, t)).ToList() ?? [];
+
+        if (input.AuthorIds.HasValue)
+            work.Work_Authors = input.AuthorIds.Value?.Select(t => new Work_Author(work.Id, t)).ToList() ?? [];
+    }
 
 }
