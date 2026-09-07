@@ -56,7 +56,7 @@ public static class LoginUtils
             return false;
         }
 
-        s_adminCreated = db.Users.Any(u => u.Admin == true);
+        s_adminCreated = await db.Users.AnyAsync(u => u.Admin == true);
         return !s_adminCreated;
     }
 

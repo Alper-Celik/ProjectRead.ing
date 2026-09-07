@@ -27,9 +27,9 @@ public partial class AuthQueries
     public record RegisterInfo(bool CanRegisterAsAdmin);
 
     [PermissionCheckAuthorize(UserPermissionBits.UserRead)]
-    public static async Task<AuthQueriesUtils.User> GetCurrentUser([Service] PGContext db, [Service] ICurrentUserId id)
+    public static async Task<AuthQueriesUtils.User> GetCurrentUser([Service] PGContext db, [Service] ICurrentUserId id, CancellationToken ct)
     {
-        return AuthQueriesUtils.UserMapper.ToDto(db.Users.Find(id.Id)!);
+        return AuthQueriesUtils.UserMapper.ToDto(await db.Users.FindAsync([id.Id], cancellationToken: ct))!;
     }
 }
 
