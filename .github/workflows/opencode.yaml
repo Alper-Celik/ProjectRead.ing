@@ -1,0 +1,86 @@
+# SPDX-FileCopyrightText: 2025 opencode
+# SPDX-FileCopyrightText: 2026 Alper Çelik <alper@alper-celik.dev>
+#
+# SPDX-License-Identifier: MIT
+
+name: opencode
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+env:
+  OPENCODE_ENABLE_EXA: 1
+  OPENCODE_CONFIG: /tmp/opencode.json
+
+jobs:
+  opencode:
+    if: |
+      contains(github.event.comment.body, '/oc') ||
+      contains(github.event.comment.body, '/opencode') ||
+      contains(github.event.comment.body, '/oc_review') ||
+      contains(github.event.comment.body, '/opencode_review')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Create OpenCode config
+        run: |
+          cat > /tmp/opencode.json << 'EOF'
+          {
+            "$schema": "https://opencode.ai/config.json",
+            "mcp": {
+              "github": {
+                "type": "remote",
+                "url": "https://api.githubcopilot.com/mcp/",
+                "oauth": false,
+                "headers": {
+                  "Authorization": "Bearer {env:GITHUB_MCP_TOKEN}"
+                }
+              }
+            }
+          }
+          EOF
+
+      - name: Run OpenCode
+        uses: anomalyco/opencode/github@latest
+        if: |
+          contains(github.event.comment.body, '/oc_review') ||
+          contains(github.event.comment.body, '/opencode_review')
+
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_MCP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          use_github_token: true
+          mentions: "/oc_review,/opencode_review"
+          model: opencode-go/qwen3.8-flash
+          prompt: |
+            Review the code and post inline review comments on specific lines
+            using the GitHub MCP tools. Only comment on lines with actual issues.
+            Use `github_create_pull_request_review` with line-level comments.
+            Add change suggestions with review when fixes are small
+
+      - name: Run OpenCode
+        uses: anomalyco/opencode/github@latest
+        if: |
+          contains(github.event.comment.body, '/oc') ||
+          contains(github.event.comment.body, '/opencode')
+
+        env:
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          GITHUB_MCP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          use_github_token: true
+          model: opencode-go/qwen3.8-flash

@@ -5,9 +5,13 @@
 
 name: CI
 on:
-  - push
-  - pull_request
-  - workflow_dispatch
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 env:
   JUST_COLOR: always
