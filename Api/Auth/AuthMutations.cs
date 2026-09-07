@@ -43,12 +43,13 @@ public static partial class AuthMutations
                 Argon2id.VerifyHash(user.PasswordHash, Encoding.UTF8.GetBytes(input.Password.Normalize())))
         {
             var token = await LoginUtils.CreateUserSession(user.Id, input.ClientName, db);
+            await db.SaveChangesAsync();
             await tx.CommitAsync();
             return new(UserMapper.ToDto(user), token);
         }
 
         throw new GraphQLException(ErrorBuilder.New()
-                .SetMessage("Invalid Credantials")
+                .SetMessage("Invalid Credentials")
                 .SetCode(ErrorCodes.INVALID_CREDS)
                 .Build());
     }
