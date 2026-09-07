@@ -62,6 +62,7 @@ jobs:
           GITHUB_MCP_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          share: true
           use_github_token: true
           mentions: "/oc_review,/opencode_review"
           model: opencode-go/qwen3.8-flash
@@ -84,3 +85,7 @@ jobs:
         with:
           use_github_token: true
           model: opencode-go/qwen3.8-flash
+          share: true
+
+      - run: sleep 10
+        if: always()
