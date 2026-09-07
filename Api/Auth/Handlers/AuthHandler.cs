@@ -25,7 +25,7 @@ class AuthHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerF
         List<byte[]> userTokenHashes = [.. tokenHashes
             .Where(s => s != null && s.StartsWith(LoginUtils.UserTokenPrefix))
         .Select(s => Base64Url.DecodeFromChars(
-                    s.AsSpan()[(LoginUtils.UserTokenPrefix.Length - 1)..]))];
+                    s.AsSpan()[LoginUtils.UserTokenPrefix.Length ..]))];
 
         var userToken = await db.UserTokens.Where(ut => userTokenHashes.Contains(ut.TokenHash)).FirstOrDefaultAsync();
 
@@ -39,13 +39,12 @@ class AuthHandler(IOptionsMonitor<AuthenticationSchemeOptions> options, ILoggerF
                 new Claim(UserTokenEF.PermissionBitsType,((long)userToken.Permissions).ToString()),
             ];
 
+            var identity = new ClaimsIdentity(claims, "user_token");
+
             return AuthenticateResult.Success(
                     new AuthenticationTicket(
                         new ClaimsPrincipal(
-                                new ClaimsPrincipal(new ClaimsIdentity(
-                                        claims
-                                        )
-                                    )
+                                new ClaimsPrincipal(identity)
                             ),
                         Scheme.Name)
                     );
