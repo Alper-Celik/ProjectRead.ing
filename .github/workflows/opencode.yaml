@@ -33,6 +33,30 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
 
+      - uses: actions/cache@v6
+        id: nuget-cache
+        background: true
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/packages.lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - uses: nixbuild/nix-quick-install-action@v30
+        with:
+          nix_conf: |
+            keep-env-derivations = true
+            keep-outputs = true
+
+      - run: ../opencode-shell.sh -c "echo load nix env"
+
+      - wait: nuget-cache
+
+      - name: Run Services
+        id: services
+        background: true
+        run: nix run .#ci-services -- up --tui=false
+
       - name: Create OpenCode config
         run: |
           cat > /tmp/opencode.json << 'EOF'
