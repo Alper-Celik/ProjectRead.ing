@@ -36,6 +36,7 @@ public static partial class UpdateWorkMutations
 
         UpdateWorkInput.ApplyToWork(work, input);
         work.RowVersion += 1;
+        work.MetadataAddedAt = Now();
 
         await db.SaveChangesAsync(cancellationToken: ct);
 
