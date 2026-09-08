@@ -14,6 +14,8 @@ using Api.Works.Queries;
 
 using FluentValidation;
 
+using Microsoft.EntityFrameworkCore;
+
 using NodaTime;
 
 namespace Api.Works.Mutations;
@@ -32,7 +34,10 @@ public static partial class UpdateWorkMutations
             )
     {
         var tx = await txGetter.BeginOrGetTransactionAsync();
-        var work = (await db.Works.FindAsync([input.Id], cancellationToken: ct))!;
+        var work = await db.Works
+            .Include(w => w.WorkTag_Works)
+            .Include(w => w.Work_Authors)
+            .SingleAsync(w => w.Id == input.Id, cancellationToken: ct);
 
         UpdateWorkInput.ApplyToWork(work, input);
         work.RowVersion += 1;
