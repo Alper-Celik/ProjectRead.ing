@@ -5,9 +5,9 @@
 namespace Api.Utils;
 
 public record PaginationResult<T>(
-        IReadOnlyCollection<T> Items,
-        int TotalCount,
-        int PageSize,
-        int CurrentPage,
-        int TotalPages
-        );
+    IReadOnlyCollection<T> Items,
+    int TotalCount,
+    int PageSize,
+    int CurrentPage,
+    int TotalPages
+);

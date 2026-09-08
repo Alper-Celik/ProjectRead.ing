@@ -6,8 +6,6 @@ SPDX-License-Identifier: Apache-2.0
 -->
 
 <Project Sdk="Microsoft.NET.Sdk.Web">
-
-
   <PropertyGroup>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <TargetFramework>net10.0</TargetFramework>
@@ -35,14 +33,19 @@ SPDX-License-Identifier: Apache-2.0
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="HotChocolate.Types.NodaTime" Version="16.6.4" />
-      <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
-      <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
-        <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        <PrivateAssets>all</PrivateAssets>
-      </PackageReference>
-      <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.3" />
-      <PackageReference Include="Riok.Mapperly" Version="4.3.1" ExcludeAssets="runtime" PrivateAssets="all" />
-      <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.11">
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime" Version="10.0.3" />
+    <PackageReference
+      Include="Riok.Mapperly"
+      Version="4.3.1"
+      ExcludeAssets="runtime"
+      PrivateAssets="all"
+    />
+    <PackageReference Include="Microsoft.Extensions.ApiDescription.Server" Version="10.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
@@ -51,7 +54,10 @@ SPDX-License-Identifier: Apache-2.0
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="10.0.3" />
     <PackageReference Include="Npgsql.NodaTime" Version="10.0.3" />
     <PackageReference Include="Scalar.AspNetCore" Version="2.17.3" />
-    <PackageReference Include="SharpGrip.FluentValidation.AutoValidation.Endpoints" Version="2.0.0" />
+    <PackageReference
+      Include="SharpGrip.FluentValidation.AutoValidation.Endpoints"
+      Version="2.0.0"
+    />
     <PackageReference Include="Tirion.FairyBread" Version="13.2.0" />
   </ItemGroup>
 
@@ -60,6 +66,9 @@ SPDX-License-Identifier: Apache-2.0
   </ItemGroup>
 
   <Target Name="ExportGraphQLSchema" AfterTargets="Build">
-    <Exec Command="GRAPHQL_EXPORT=1 dotnet run --no-build -- schema export --output &quot;$(MSBuildProjectDirectory)/Schema.graphql&quot;" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <Exec
+      Command="GRAPHQL_EXPORT=1 dotnet run --no-build -- schema export --output &quot;$(MSBuildProjectDirectory)/Schema.graphql&quot;"
+      WorkingDirectory="$(MSBuildProjectDirectory)"
+    />
   </Target>
 </Project>

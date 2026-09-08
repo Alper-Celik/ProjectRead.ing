@@ -4,7 +4,6 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -34,7 +33,5 @@ public class UserEF : IEntityMetadata
 
 public class UserEntityTypeConfiguration : IEntityTypeConfiguration<UserEF>
 {
-    public void Configure(EntityTypeBuilder<UserEF> builder)
-    {
-    }
+    public void Configure(EntityTypeBuilder<UserEF> builder) { }
 }

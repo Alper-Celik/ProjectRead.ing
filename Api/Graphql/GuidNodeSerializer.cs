@@ -6,42 +6,52 @@ using System.Reflection;
 
 public class GuidNodeSerializer : INodeIdSerializer
 {
-
     public Dictionary<byte, string> PostfixTypeNames { get; init; }
     public Dictionary<Type, byte> TypePostFix { get; init; }
 
     public MethodInfo GetSuffixGeneric { get; init; }
 
-    static byte GetSuffix<T>() where T : IEntityMetadata => T.IdPostfix;
+    static byte GetSuffix<T>()
+        where T : IEntityMetadata => T.IdPostfix;
+
     public GuidNodeSerializer()
     {
-
-
-        var nodeTypes = Assembly.GetExecutingAssembly().GetTypes()
+        var nodeTypes = Assembly
+            .GetExecutingAssembly()
+            .GetTypes()
             .Where(t =>
                 t.GetInterfaces()
-                    .Where(
-                        t => (new Type[] { typeof(INode), typeof(IEntityMetadata) })
-                        .Contains(t))
-                    .Distinct().Count() == 2).ToArray();
+                    .Where(t =>
+                        (new Type[] { typeof(INode), typeof(IEntityMetadata) }).Contains(
+                            t
+                        )
+                    )
+                    .Distinct()
+                    .Count() == 2
+            )
+            .ToArray();
 
-
-        GetSuffixGeneric = typeof(GuidNodeSerializer).GetMethod(nameof(GetSuffix), BindingFlags.NonPublic | BindingFlags.Static)!;
+        GetSuffixGeneric = typeof(GuidNodeSerializer).GetMethod(
+            nameof(GetSuffix),
+            BindingFlags.NonPublic | BindingFlags.Static
+        )!;
 
         TypePostFix = nodeTypes
-           .Select(t => new KeyValuePair<Type, byte>(
-                       t,
-                       (byte)GetSuffixGeneric!.MakeGenericMethod(t).Invoke(null, null)!
-                       )).ToDictionary();
-        PostfixTypeNames = TypePostFix.Select(kv => new KeyValuePair<byte, string>(kv.Value, kv.Key.Name)).ToDictionary();
+            .Select(t => new KeyValuePair<Type, byte>(
+                t,
+                (byte)GetSuffixGeneric!.MakeGenericMethod(t).Invoke(null, null)!
+            ))
+            .ToDictionary();
+        PostfixTypeNames = TypePostFix
+            .Select(kv => new KeyValuePair<byte, string>(kv.Value, kv.Key.Name))
+            .ToDictionary();
     }
 
-    public string Format(string typeName, object internalId)
-        => internalId is Guid id
-            ? id.ToString("D")
-            : throw new ArgumentException();
+    public string Format(string typeName, object internalId) =>
+        internalId is Guid id ? id.ToString("D") : throw new ArgumentException();
 
-    public NodeId Parse(string formattedId, INodeIdRuntimeTypeLookup runtimeTypeLookup) => Parse(formattedId);
+    public NodeId Parse(string formattedId, INodeIdRuntimeTypeLookup runtimeTypeLookup) =>
+        Parse(formattedId);
 
     public NodeId Parse(string formattedId, Type runtimeType) => Parse(formattedId);
 
@@ -53,10 +63,12 @@ public class GuidNodeSerializer : INodeIdSerializer
         {
             return new(typeName, id);
         }
-        throw new GraphQLException(ErrorBuilder.New()
+        throw new GraphQLException(
+            ErrorBuilder
+                .New()
                 .SetMessage("Invalid Id")
-                .SetCode(Api.ErrorCodes.INVALID_ID).Build());
+                .SetCode(Api.ErrorCodes.INVALID_ID)
+                .Build()
+        );
     }
-
-
 }

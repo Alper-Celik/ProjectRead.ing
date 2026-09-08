@@ -14,8 +14,5 @@ public static class Setup
         services.AddHttpContextAccessor();
     }
 
-    public static void MapEndpoints(IEndpointRouteBuilder route)
-    {
-
-    }
+    public static void MapEndpoints(IEndpointRouteBuilder route) { }
 }

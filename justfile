@@ -23,10 +23,16 @@ dotnet-build: dotnet-restore
   dotnet build --no-restore
 
 dotnet-format-check:
-  dotnet format --verify-no-changes --verbosity diagnostic --no-restore
+  dotnet tool restore
+  dotnet csharpier check .
+  dotnet format style --verify-no-changes --verbosity diagnostic --no-restore
+  dotnet format analyzers --verify-no-changes --verbosity diagnostic --no-restore
 
 dotnet-format:
-  dotnet format --verbosity diagnostic --no-restore
+  dotnet tool restore
+  dotnet csharpier .
+  dotnet format style --verbosity diagnostic --no-restore
+  dotnet format analyzers --verbosity diagnostic --no-restore
 
 dotnet-test:
   rm -rf TestResults

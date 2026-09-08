@@ -4,12 +4,9 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Api.Auth.Models;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 using Riok.Mapperly.Abstractions;
 
 namespace Api.Works.Models;
@@ -25,6 +22,7 @@ public class Work : IDbEntityMetadata
     public int RowVersion { get; set; }
     public NodaTime.Instant MetadataAddedAt { get; set; }
     public NodaTime.Instant MetadataUpdatedAt { get; set; }
+
     [MapperIgnore]
     [ForeignKey(nameof(Owner))]
     public Guid OwnerId { get; set; }
@@ -40,11 +38,13 @@ public class Work : IDbEntityMetadata
     // Navigation Properties
     [MapperIgnore]
     public List<WorkTag> WorkTags { get; set; } = [];
+
     [MapperIgnore]
     public List<Author> Authors { get; set; } = [];
 
     [MapperIgnore]
     public List<WorkTag_Work> WorkTag_Works { get; set; } = [];
+
     [MapperIgnore]
     public List<Work_Author> Work_Authors { get; set; } = [];
 
@@ -52,15 +52,12 @@ public class Work : IDbEntityMetadata
     public UserEF Owner { get; set; } = null!;
 }
 
-public record WorkIdentifier(
-        string WorkIdentifierType,
-        string WorkIdentifierValue);
+public record WorkIdentifier(string WorkIdentifierType, string WorkIdentifierValue);
 
 public class WorkTypeConfiguration : IEntityTypeConfiguration<Work>
 {
     public void Configure(EntityTypeBuilder<Work> builder)
     {
-        builder
-            .ComplexCollection(w => w.WorkIdentifiers, wid => wid.ToJson());
+        builder.ComplexCollection(w => w.WorkIdentifiers, wid => wid.ToJson());
     }
 }

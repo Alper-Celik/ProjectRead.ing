@@ -4,10 +4,7 @@
 
 namespace Api.Works;
 
-
 public static class Setup
 {
-    public static void MapEndpoints(IEndpointRouteBuilder route)
-    {
-    }
+    public static void MapEndpoints(IEndpointRouteBuilder route) { }
 }

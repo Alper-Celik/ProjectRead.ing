@@ -4,26 +4,19 @@
 
 using System.Text;
 using System.Text.Json;
-
 using Api.Database;
-
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Configuration;
-
 using TUnit.AspNetCore;
 using TUnit.Core.Interfaces;
-
 using ZeroQL.Client;
 
 namespace Api.Tests;
 
-public class MyWebApplicationFactory : TestWebApplicationFactory<Program>
-{
-
-}
+public class MyWebApplicationFactory : TestWebApplicationFactory<Program> { }
 
 public abstract class TestInit : WebApplicationTest<MyWebApplicationFactory, Program>
 {
@@ -34,7 +27,9 @@ public abstract class TestInit : WebApplicationTest<MyWebApplicationFactory, Pro
             if (field is null)
             {
                 var httpClient = Factory.CreateClient();
-                httpClient.BaseAddress = new Uri(httpClient.BaseAddress!.AbsoluteUri + "graphql/");
+                httpClient.BaseAddress = new Uri(
+                    httpClient.BaseAddress!.AbsoluteUri + "graphql/"
+                );
                 field = new ApiClient(httpClient);
             }
             return field;
@@ -45,19 +40,25 @@ public abstract class TestInit : WebApplicationTest<MyWebApplicationFactory, Pro
     protected override void ConfigureTestConfiguration(IConfigurationBuilder config)
     {
         Stream strStream = new MemoryStream(
-                Encoding.UTF8.GetBytes(JsonSerializer.Serialize(new
-                {
-                    IsTest = true,
-                    ConnectionStrings = new
+            Encoding.UTF8.GetBytes(
+                JsonSerializer.Serialize(
+                    new
                     {
-                        PGSchema = GetIsolatedName("test_schema"),
-                        PG = new Npgsql.NpgsqlConnectionStringBuilder(config.Build().GetConnectionString("PG"))
+                        IsTest = true,
+                        ConnectionStrings = new
                         {
-                            Database = DBInfo.Name,
-                        }.ConnectionString
+                            PGSchema = GetIsolatedName("test_schema"),
+                            PG = new Npgsql.NpgsqlConnectionStringBuilder(
+                                config.Build().GetConnectionString("PG")
+                            )
+                            {
+                                Database = DBInfo.Name,
+                            }.ConnectionString,
+                        },
                     }
-                }
-                )));
+                )
+            )
+        );
         config.AddJsonStream(strStream);
     }
 
@@ -67,7 +68,10 @@ public abstract class TestInit : WebApplicationTest<MyWebApplicationFactory, Pro
     public record DBData : IAsyncInitializer, IAsyncDisposable
     {
         public string Name { get; init; } = $"test_db";
-        readonly Npgsql.NpgsqlDataSource _npgsqlDataSource = new Npgsql.NpgsqlDataSourceBuilder($"Host=localhost;Username=postgres").Build();
+        readonly Npgsql.NpgsqlDataSource _npgsqlDataSource =
+            new Npgsql.NpgsqlDataSourceBuilder(
+                $"Host=localhost;Username=postgres"
+            ).Build();
 
         public async ValueTask DisposeAsync()
         {
@@ -77,11 +81,17 @@ public abstract class TestInit : WebApplicationTest<MyWebApplicationFactory, Pro
 
         public async Task InitializeAsync()
         {
-            await using (var cmd_drop = _npgsqlDataSource.CreateCommand($"DROP DATABASE IF EXISTS \"{Name}\""))
+            await using (
+                var cmd_drop = _npgsqlDataSource.CreateCommand(
+                    $"DROP DATABASE IF EXISTS \"{Name}\""
+                )
+            )
             {
                 await cmd_drop.ExecuteNonQueryAsync();
             }
-            await using var cmd = _npgsqlDataSource.CreateCommand($"CREATE DATABASE \"{Name}\"");
+            await using var cmd = _npgsqlDataSource.CreateCommand(
+                $"CREATE DATABASE \"{Name}\""
+            );
             await cmd.ExecuteScalarAsync();
         }
     }
@@ -97,7 +107,5 @@ public abstract class TestInit : WebApplicationTest<MyWebApplicationFactory, Pro
         }
 
         await Factory.DisposeAsync();
-
     }
-
 }

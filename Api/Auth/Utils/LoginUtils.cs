@@ -3,22 +3,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.Buffers.Text;
-
 using Api.Auth.Models;
 using Api.Database;
-
 using Geralt;
-
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
-
 using NodaTime;
 
 namespace Api.Auth.Utils;
 
 public static class LoginUtils
 {
-
     public const char PrefixSeparator = '_';
     public const string UserTokenPrefixName = "user";
     public const string TokenCookieName = "auth_token";
@@ -26,10 +21,12 @@ public static class LoginUtils
 
     public static string UserTokenPrefix => UserTokenPrefixName + PrefixSeparator;
 
-
-    public static async Task<string> CreateUserSession(Guid userId, string sessionName, PGContext ctx)
+    public static async Task<string> CreateUserSession(
+        Guid userId,
+        string sessionName,
+        PGContext ctx
+    )
     {
-
         var apiToken = new byte[32];
         SecureRandom.Fill(apiToken);
 
@@ -60,28 +57,35 @@ public static class LoginUtils
         return !s_adminCreated;
     }
 
-
     public static Ok<LoginResultDTO> LogUserIn(HttpContext ctx, string token)
     {
-        ctx.Response.Cookies.Append(TokenCookieName, token, new CookieOptions
-        {
-            IsEssential = true,
-            SameSite = SameSiteMode.Strict,
-            Secure = ctx.Request.Scheme == "https",
-            HttpOnly = true,
-        });
+        ctx.Response.Cookies.Append(
+            TokenCookieName,
+            token,
+            new CookieOptions
+            {
+                IsEssential = true,
+                SameSite = SameSiteMode.Strict,
+                Secure = ctx.Request.Scheme == "https",
+                HttpOnly = true,
+            }
+        );
         return TypedResults.Ok(new LoginResultDTO(token));
     }
 
     public static async Task UpdateLastUsedForUserToken(UserTokenEF token, PGContext ctx)
     {
         var currentTime = SystemClock.Instance.GetCurrentInstant();
-        if (token.LastUsed is null ||
-                token.LastUsed + Duration.FromMinutes(1) <= currentTime)
+        if (
+            token.LastUsed is null
+            || token.LastUsed + Duration.FromMinutes(1) <= currentTime
+        )
         {
-            await ctx.UserTokens.Where(ut => ut.TokenHash.SequenceEqual(token.TokenHash))
+            await ctx
+                .UserTokens.Where(ut => ut.TokenHash.SequenceEqual(token.TokenHash))
                 .ExecuteUpdateAsync(setter =>
-                        setter.SetProperty(ut => ut.LastUsed, currentTime));
+                    setter.SetProperty(ut => ut.LastUsed, currentTime)
+                );
         }
     }
 

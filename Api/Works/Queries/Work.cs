@@ -5,11 +5,8 @@
 using Api.Auth.Handlers;
 using Api.Auth.Utils;
 using Api.Database;
-
 using GreenDonut.Data;
-
 using HotChocolate.Types.Pagination;
-
 using Riok.Mapperly.Abstractions;
 
 namespace Api.Works.Queries;
@@ -17,7 +14,6 @@ namespace Api.Works.Queries;
 [QueryType]
 public static partial class WorkQuery
 {
-
     [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkRead)]
     [UseFiltering]
     [UseSorting]
@@ -27,15 +23,14 @@ public static partial class WorkQuery
         CancellationToken ct,
         QueryContext<Work> qc,
         PagingArguments pagingArguments
-        )
+    )
     {
-        return await db.Works
-            .Where(w => w.OwnerId == userId.Id)
+        return await db
+            .Works.Where(w => w.OwnerId == userId.Id)
             .ProjectToDto()
             .With(qc)
             .ToPageAsync(pagingArguments, cancellationToken: ct);
     }
-
 }
 
 [Node]
@@ -56,11 +51,13 @@ public class Work : IEntityMetadata, INode
     public NodaTime.Instant? WorkUpdatedAt { get; set; }
     public List<WorkIdentifier> WorkIdentifiers { get; set; } = [];
 
-    public record WorkIdentifier(
-            string WorkIdentifierType,
-            string WorkIdentifierValue);
+    public record WorkIdentifier(string WorkIdentifierType, string WorkIdentifierValue);
 
-    public static async Task<Work?> GetAsync([Service] PGContext db, Guid id, CancellationToken ct) => WorkMapper.ToDto(await db.Works.FindAsync([id], cancellationToken: ct));
+    public static async Task<Work?> GetAsync(
+        [Service] PGContext db,
+        Guid id,
+        CancellationToken ct
+    ) => WorkMapper.ToDto(await db.Works.FindAsync([id], cancellationToken: ct));
 }
 
 [Mapper]

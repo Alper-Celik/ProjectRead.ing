@@ -3,16 +3,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using Microsoft.EntityFrameworkCore.Storage;
+
 namespace Api.Database.Utils;
 
 public interface IEFTransactionDIAccessorService : IAsyncDisposable, IDisposable
 {
     public IDbContextTransaction BeginOrGetTransaction();
-    public Task<IDbContextTransaction> BeginOrGetTransactionAsync(CancellationToken? ct = null);
+    public Task<IDbContextTransaction> BeginOrGetTransactionAsync(
+        CancellationToken? ct = null
+    );
     public ValueTask FinishTransaction();
 }
 
-public class EFTransactionDIAccessorService(PGContext db) : IEFTransactionDIAccessorService
+public class EFTransactionDIAccessorService(PGContext db)
+    : IEFTransactionDIAccessorService
 {
     private IDbContextTransaction? _tx;
 
@@ -22,9 +26,13 @@ public class EFTransactionDIAccessorService(PGContext db) : IEFTransactionDIAcce
         return _tx;
     }
 
-    public async Task<IDbContextTransaction> BeginOrGetTransactionAsync(CancellationToken? ct = null)
+    public async Task<IDbContextTransaction> BeginOrGetTransactionAsync(
+        CancellationToken? ct = null
+    )
     {
-        _tx ??= await db.Database.BeginTransactionAsync(cancellationToken: ct ?? CancellationToken.None);
+        _tx ??= await db.Database.BeginTransactionAsync(
+            cancellationToken: ct ?? CancellationToken.None
+        );
         return _tx;
     }
 

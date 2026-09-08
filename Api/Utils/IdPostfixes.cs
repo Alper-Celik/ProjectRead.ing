@@ -12,7 +12,9 @@ public enum IdPostfixes : byte
 
 public static class GuidExtensions
 {
-    public static Guid WithPostfix(this Guid id, IdPostfixes postfix) => WithPostfix(id, (byte)postfix);
+    public static Guid WithPostfix(this Guid id, IdPostfixes postfix) =>
+        WithPostfix(id, (byte)postfix);
+
     public static Guid WithPostfix(this Guid id, byte postfix)
     {
         Span<byte> newGuid = stackalloc byte[16];

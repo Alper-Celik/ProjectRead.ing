@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using Api.Auth.Models;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Database;

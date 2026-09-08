@@ -3,55 +3,64 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.Security.Claims;
-
 using Api.Auth.Models;
-
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
 namespace Api.Auth.Handlers;
 
-public class PermissionCheckRequirement(UserPermissionBits permissionBits) : IAuthorizationRequirement
+public class PermissionCheckRequirement(UserPermissionBits permissionBits)
+    : IAuthorizationRequirement
 {
     public UserPermissionBits PermissionBits { get; } = permissionBits;
 }
-public class PermissionPolicyProvider(IOptions<AuthorizationOptions> options) : DefaultAuthorizationPolicyProvider(options)
+
+public class PermissionPolicyProvider(IOptions<AuthorizationOptions> options)
+    : DefaultAuthorizationPolicyProvider(options)
 {
     public const string POLICY_PREFIX = "PermissionBits_";
 
     public override Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
     {
-        if (policyName.StartsWith(POLICY_PREFIX) &&
-                long.TryParse(policyName[POLICY_PREFIX.Length..], out long permissionBits))
+        if (
+            policyName.StartsWith(POLICY_PREFIX)
+            && long.TryParse(policyName[POLICY_PREFIX.Length..], out long permissionBits)
+        )
         {
             return Task.FromResult<AuthorizationPolicy?>(
-                    new AuthorizationPolicyBuilder()
-                            .AddRequirements(
-                                new PermissionCheckRequirement(
-                                    (UserPermissionBits)permissionBits))
-                            .Build());
+                new AuthorizationPolicyBuilder()
+                    .AddRequirements(
+                        new PermissionCheckRequirement((UserPermissionBits)permissionBits)
+                    )
+                    .Build()
+            );
         }
 
         return base.GetPolicyAsync(policyName);
     }
 }
 
-
-
-
-
-class PermissionCheckAuthorizationHandler : AuthorizationHandler<PermissionCheckRequirement>
+class PermissionCheckAuthorizationHandler
+    : AuthorizationHandler<PermissionCheckRequirement>
 {
-    protected override Task HandleRequirementAsync(AuthorizationHandlerContext context, PermissionCheckRequirement requirement)
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        PermissionCheckRequirement requirement
+    )
     {
-        var userPermissionBitsString = context.User.FindFirstValue(UserTokenEF.PermissionBitsType);
+        var userPermissionBitsString = context.User.FindFirstValue(
+            UserTokenEF.PermissionBitsType
+        );
         if (!long.TryParse(userPermissionBitsString, out long userPermissionBitsLong))
         {
             return Task.CompletedTask;
         }
         var userPermissionBits = (UserPermissionBits)userPermissionBitsLong;
 
-        if ((requirement.PermissionBits & userPermissionBits) == requirement.PermissionBits)
+        if (
+            (requirement.PermissionBits & userPermissionBits)
+            == requirement.PermissionBits
+        )
         {
             context.Succeed(requirement);
         }
@@ -59,11 +68,9 @@ class PermissionCheckAuthorizationHandler : AuthorizationHandler<PermissionCheck
     }
 }
 
-
-
 class PermissionCheckAuthorizeAttribute
-    : HotChocolate.Authorization.AuthorizeAttribute
-    , IAuthorizeData
+    : HotChocolate.Authorization.AuthorizeAttribute,
+        IAuthorizeData
 {
     public PermissionCheckAuthorizeAttribute(UserPermissionBits permissionBits)
     {

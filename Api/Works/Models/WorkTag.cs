@@ -4,12 +4,9 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-
 using Api.Auth.Models;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-
 using Riok.Mapperly.Abstractions;
 
 namespace Api.Works.Models;
@@ -25,6 +22,7 @@ public class WorkTag : IDbEntityMetadata
     public int RowVersion { get; set; }
     public NodaTime.Instant MetadataAddedAt { get; set; }
     public NodaTime.Instant MetadataUpdatedAt { get; set; }
+
     [MapperIgnore]
     [ForeignKey(nameof(Owner))]
     public Guid OwnerId { get; set; }
@@ -37,23 +35,19 @@ public class WorkTag : IDbEntityMetadata
     public List<WorkTag_Work> WorkTagWorks { get; set; } = null!;
     public List<Work> Works { get; set; } = null!;
     public UserEF Owner { get; set; } = null!;
-
 }
-
 
 [Table("work_tag___tag")]
 [PrimaryKey(nameof(WorkId), nameof(WorkTagId))]
 public class WorkTag_Work
 {
-
     public WorkTag_Work(Guid workId, Guid tagId)
     {
         WorkId = workId;
         WorkTagId = tagId;
     }
-    public WorkTag_Work()
-    {
-    }
+
+    public WorkTag_Work() { }
 
     public Guid WorkId { get; set; }
     public Guid WorkTagId { get; set; }
