@@ -35,7 +35,12 @@
         {
           devShells.default =
             let
-              dotnet = pkgs.dotnetCorePackages.sdk_11_0;
+              dotnet = (
+                with pkgs.dotnetCorePackages;
+                combinePackages [
+                  sdk_10_0
+                ]
+              );
             in
             pkgs.mkShell {
               inputsFrom = [

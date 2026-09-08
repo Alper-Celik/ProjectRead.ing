@@ -17,4 +17,7 @@ public enum UserPermissionBits : long
     WorkTagRead = 1L << 4,
     WorkTagWrite = 1L << 5,
 
+    UserRead = 1L << 6,
+    UserWrite = 1L << 7
+
 }

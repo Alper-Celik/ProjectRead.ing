@@ -1,75 +1,88 @@
-using System.Threading.Tasks;
-
-using Api.Auth.Endpoints;
 // SPDX-FileCopyrightText: 2026 Alper Çelik <alper@alper-celik.dev>
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
+
+using System.Threading.Tasks;
+
+
+using ZeroQL;
+using ZeroQL.Client;
 
 namespace Api.Tests;
 
 public class AuthTests : TestInit
 {
 
-    async Task<HttpResponseMessage> AddUser(string name, bool asAdmin, HttpClient client, CancellationToken ct, string? password = null)
-    {
-        return await client.PostAsJsonAsync("api/auth/register", new RegisterEndpoints.RegisterDTO()
-        {
-            AdminRegistration = asAdmin,
-            Email = $"{name}@projectread.ing",
-            Password = password ?? "correct horse battery staple"
-        }, cancellationToken: ct);
-    }
     [Test]
     public async Task OnlyFirstAccountCanBeAdmin(CancellationToken ct)
     {
-        // Given 
-        var client = Factory.CreateClient();
+        var preRegister_bool = await CanRegisterAdmin(Client);
+        var user1 = await AddUser(Client, "didnt_wanted_to_be_admin", false);
+        var postNonAdminRegister_bool = await CanRegisterAdmin(Client);
+        var adminUser = await AddUser(Client, "sysadmin", true);
+        var postAdminRegister_bool = await CanRegisterAdmin(Client);
+        var failedRegisterUser = await AddUser(Client, "want_poweeer", true);
 
 
-        // When
+        preRegister_bool.HttpResponseMessage.EnsureSuccessStatusCode();
+        await Assert.That(preRegister_bool.Data).IsTrue();
 
-        var preRegister_RegisterInfo = await GetRegisterInfo(ct, client);
+        await Assert.That(user1.Errors).IsNull().Or.IsEmpty();
 
-        var firstRegisterResponse = await AddUser("didnt_wanted_to_be_admin", false, client, ct);
+        postAdminRegister_bool.HttpResponseMessage.EnsureSuccessStatusCode();
+        await Assert.That(postNonAdminRegister_bool.Data).IsTrue();
 
-        var postNonAdminRegister_RegisterInfo = await GetRegisterInfo(ct, client);
+        await Assert.That(adminUser.Errors).IsNull().Or.IsEmpty();
 
-        var adminRegisterResponse = await AddUser("sysadmin", true, client, ct);
 
-        await Task.Delay(300);
+        await Assert.That(postAdminRegister_bool.Data).IsFalse();
 
-        var postAdminRegister_RegisterInfo = await GetRegisterInfo(ct, client);
-
-        var failedRegisterResponse = await AddUser("want_poweeer", true, client, ct);
-
-        // Then
-
-        await Assert.That(preRegister_RegisterInfo?.CanRegisterAsAdmin).IsTrue();
-        await Assert.That(() => firstRegisterResponse.EnsureSuccessStatusCode()).ThrowsNothing();
-        await Assert.That(postNonAdminRegister_RegisterInfo?.CanRegisterAsAdmin).IsTrue();
-        await Assert.That(() => adminRegisterResponse.EnsureSuccessStatusCode()).ThrowsNothing();
-        await Assert.That(postAdminRegister_RegisterInfo?.CanRegisterAsAdmin).IsFalse();
-        await Assert.That(failedRegisterResponse.StatusCode).EqualTo(System.Net.HttpStatusCode.BadRequest);
+        failedRegisterUser.HttpResponseMessage.EnsureSuccessStatusCode(); //even in failure it should return successful graphql response
+        await Assert.That(failedRegisterUser.Errors)
+            .IsNotNull()
+            .And.IsNotEmpty();
     }
-
-    private static async Task<RegisterEndpoints.RegisterInfo?> GetRegisterInfo(CancellationToken ct, HttpClient? client) => await (
-                    await client.GetAsync(
-                           "api/auth/register_info", ct))
-                   .EnsureSuccessStatusCode()
-                   .Content.ReadFromJsonAsync<RegisterEndpoints.RegisterInfo>(cancellationToken: ct);
 
     [Test]
     public async Task CantLoginWithWrongPassword(CancellationToken ct)
     {
-        var client = Factory.CreateClient();
+        var user = await AddUser(Client, "user", false, "hunter2");
 
-        var user = await AddUser("admin", true, client, ct, "hunter2");
+        var loginSuccess = await Login(Client, "user", "hunter2");
 
+        var loginFail = await Login(Client, "user", "*******");
 
-        var loginFail = await client.PostAsJsonAsync("api/auth/login", new LoginEndpoints.LoginDTO("admin@projectread.ing", "*******"));
-        var loginSuccess = await client.PostAsJsonAsync("api/auth/login", new LoginEndpoints.LoginDTO("admin@projectread.ing", "hunter2"));
+        await Assert.That(loginSuccess.Data).IsNotNullOrEmpty()
+            .And.StartsWith(Auth.Utils.LoginUtils.UserTokenPrefixName);
+        await Assert.That(loginFail.Data).IsNullOrEmpty();
 
-        await Assert.That(loginFail.StatusCode).EqualTo(System.Net.HttpStatusCode.Forbidden);
-        await Assert.That(loginSuccess.EnsureSuccessStatusCode).ThrowsNothing();
     }
+
+    private static async Task<ZeroQL.GraphQLResult<DateTimeOffset>> AddUser(ApiClient client, string name, bool asAdmin, string? password = null)
+    {
+        var input = new
+        {
+            input = new RegisterInput()
+            {
+                AdminRegistration = asAdmin,
+                Email = $"{name}@projectread.ing",
+                Password = password ?? "correct horse battery staple"
+            }
+        };
+        return await client.Mutation(input, static (i, m) => m.RegisterMutation(i.input, m => m.User(u => u.MetadataAddedAt)));
+    }
+
+    private static Task<ZeroQL.GraphQLResult<bool>> CanRegisterAdmin(ApiClient client) => client.Query(q => q.RegisterInfo(r => r.CanRegisterAsAdmin));
+
+    private static async Task<GraphQLResult<string>> Login(ApiClient client, string name, string password) => await client.Mutation(new
+    {
+        input = new LoginInput()
+        {
+            Email = $"{name}@projectread.ing",
+            Password = password
+        }
+    }, static (i, m) => m.LoginMutation(i.input, lm => lm.Token));
+
+
+
 }

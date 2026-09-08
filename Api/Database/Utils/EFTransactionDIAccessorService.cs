@@ -8,7 +8,8 @@ namespace Api.Database.Utils;
 public interface IEFTransactionDIAccessorService : IAsyncDisposable, IDisposable
 {
     public IDbContextTransaction BeginOrGetTransaction();
-    public Task<IDbContextTransaction> BeginOrGetTransactionAsync();
+    public Task<IDbContextTransaction> BeginOrGetTransactionAsync(CancellationToken? ct = null);
+    public ValueTask FinishTransaction();
 }
 
 public class EFTransactionDIAccessorService(PGContext db) : IEFTransactionDIAccessorService
@@ -17,12 +18,14 @@ public class EFTransactionDIAccessorService(PGContext db) : IEFTransactionDIAcce
 
     public IDbContextTransaction BeginOrGetTransaction()
     {
-        return _tx ?? db.Database.BeginTransaction();
+        _tx ??= db.Database.BeginTransaction();
+        return _tx;
     }
 
-    public async Task<IDbContextTransaction> BeginOrGetTransactionAsync()
+    public async Task<IDbContextTransaction> BeginOrGetTransactionAsync(CancellationToken? ct = null)
     {
-        return _tx ?? await db.Database.BeginTransactionAsync();
+        _tx ??= await db.Database.BeginTransactionAsync(cancellationToken: ct ?? CancellationToken.None);
+        return _tx;
     }
 
     public async ValueTask FinishTransaction()

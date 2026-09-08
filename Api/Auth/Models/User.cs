@@ -12,27 +12,29 @@ namespace Api.Auth.Models;
 
 [Table("users")]
 [Index(nameof(Email), IsUnique = true)]
-public class User
+public class UserEF : IEntityMetadata
 {
-    public const string UserHandleAcceptedRegex = @"^[a-zA-Z0-9_\-]{3,30}$";
+    public static byte IdPostfix => (byte)IdPostfixes.User;
 
     [Key]
     public Guid Id { get; set; }
+    public int RowVersion { get; set; }
+    public NodaTime.Instant MetadataAddedAt { get; set; }
+    public NodaTime.Instant MetadataUpdatedAt { get; set; }
 
     [EmailAddress]
     public required string Email { get; set; }
 
     public bool EmailVerified { get; set; } = false;
 
-    [Column(TypeName = "bytea")]
     public required string PasswordHash { get; set; }
 
     public bool Admin { get; set; } = false;
 }
 
-public class UserEntityTypeConfiguration : IEntityTypeConfiguration<User>
+public class UserEntityTypeConfiguration : IEntityTypeConfiguration<UserEF>
 {
-    public void Configure(EntityTypeBuilder<User> builder)
+    public void Configure(EntityTypeBuilder<UserEF> builder)
     {
     }
 }

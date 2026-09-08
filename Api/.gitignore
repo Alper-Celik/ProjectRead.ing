@@ -4,3 +4,5 @@
 # SPDX-License-Identifier: Apache-2.0
 
 Api.json
+Schema.graphql
+Schema-settings.json

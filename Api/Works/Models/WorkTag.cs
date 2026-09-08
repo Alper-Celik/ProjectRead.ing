@@ -10,28 +10,33 @@ using Api.Auth.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
+using Riok.Mapperly.Abstractions;
+
 namespace Api.Works.Models;
 
 [Table("work_tags")]
-[Index(nameof(OwnerId), nameof(TagName), IsUnique = true)]
-public class WorkTag : IEntityMetadata
+[Index(nameof(OwnerId), nameof(TagNamespace), nameof(TagName), IsUnique = true)]
+public class WorkTag : IDbEntityMetadata
 {
+    public static byte IdPostfix => (byte)IdPostfixes.WorkTag;
+
     [Key]
     public Guid Id { get; set; }
     public int RowVersion { get; set; }
     public NodaTime.Instant MetadataAddedAt { get; set; }
     public NodaTime.Instant MetadataUpdatedAt { get; set; }
-
+    [MapperIgnore]
+    [ForeignKey(nameof(Owner))]
     public Guid OwnerId { get; set; }
 
-    public required string TagType { get; set; }
+    public required string[] TagNamespace { get; set; }
 
     public required string TagName { get; set; }
 
     // Navigation Properties
     public List<WorkTag_Work> WorkTagWorks { get; set; } = null!;
     public List<Work> Works { get; set; } = null!;
-    public User Owner { get; set; } = null!;
+    public UserEF Owner { get; set; } = null!;
 
 }
 
@@ -40,6 +45,16 @@ public class WorkTag : IEntityMetadata
 [PrimaryKey(nameof(WorkId), nameof(WorkTagId))]
 public class WorkTag_Work
 {
+
+    public WorkTag_Work(Guid workId, Guid tagId)
+    {
+        WorkId = workId;
+        WorkTagId = tagId;
+    }
+    public WorkTag_Work()
+    {
+    }
+
     public Guid WorkId { get; set; }
     public Guid WorkTagId { get; set; }
 

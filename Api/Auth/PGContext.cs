@@ -10,7 +10,7 @@ namespace Api.Database;
 
 public partial class PGContext : DbContext
 {
-    public DbSet<User> Users { get; set; }
+    public DbSet<UserEF> Users { get; set; }
 
-    public DbSet<UserToken> UserTokens { get; set; }
+    public DbSet<UserTokenEF> UserTokens { get; set; }
 }

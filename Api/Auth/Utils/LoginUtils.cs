@@ -22,6 +22,7 @@ public static class LoginUtils
     public const char PrefixSeparator = '_';
     public const string UserTokenPrefixName = "user";
     public const string TokenCookieName = "auth_token";
+    private static bool s_adminCreated = false;
 
     public static string UserTokenPrefix => UserTokenPrefixName + PrefixSeparator;
 
@@ -35,7 +36,7 @@ public static class LoginUtils
         Span<byte> tokenHash = stackalloc byte[32];
         BLAKE2b.ComputeHash(tokenHash, apiToken);
 
-        var dbToken = new UserToken
+        var dbToken = new UserTokenEF
         {
             UserId = userId,
             TokenHash = tokenHash.ToArray(),
@@ -47,6 +48,18 @@ public static class LoginUtils
 
         return UserTokenPrefix + Base64Url.EncodeToString(apiToken);
     }
+
+    public static async Task<bool> CanAdminRegister(PGContext db)
+    {
+        if (s_adminCreated)
+        {
+            return false;
+        }
+
+        s_adminCreated = await db.Users.AnyAsync(u => u.Admin == true);
+        return !s_adminCreated;
+    }
+
 
     public static Ok<LoginResultDTO> LogUserIn(HttpContext ctx, string token)
     {
@@ -60,7 +73,7 @@ public static class LoginUtils
         return TypedResults.Ok(new LoginResultDTO(token));
     }
 
-    public static async Task UpdateLastUsedForUserToken(UserToken token, PGContext ctx)
+    public static async Task UpdateLastUsedForUserToken(UserTokenEF token, PGContext ctx)
     {
         var currentTime = SystemClock.Instance.GetCurrentInstant();
         if (token.LastUsed is null ||

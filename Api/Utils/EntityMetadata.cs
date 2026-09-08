@@ -3,10 +3,21 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // SPDX-License-Identifier: Apache-2.0
 
-public interface IEntityMetadata
+using System.ComponentModel.DataAnnotations.Schema;
+
+public interface IDbEntityMetadata : IEntityMetadata
 {
-    public Guid Id { get; }
-    public int RowVersion { get; }
+    public Guid OwnerId { get; }
+}
+public interface IEntityMetadata : IBasicEntityMetadata
+{
     public NodaTime.Instant MetadataAddedAt { get; }
     public NodaTime.Instant MetadataUpdatedAt { get; }
+}
+public interface IBasicEntityMetadata
+{
+    [NotMapped]
+    public static abstract byte IdPostfix { get; }
+    public Guid Id { get; }
+    public int RowVersion { get; }
 }

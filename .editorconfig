@@ -204,8 +204,8 @@ csharp_preserve_single_line_statements = true
 #### Naming styles ####
 
 # RMG020: Source member is not mapped to any target member
-dotnet_diagnostic.RMG020.severity = suggestion
-
+dotnet_diagnostic.RMG020.severity = warning 
+dotnet_diagnostic.RMG012.severity = warning 
 [*.{cs,vb}]
 
 # Naming rules
