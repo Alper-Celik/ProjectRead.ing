@@ -4,6 +4,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.Text;
+using System.Text.Unicode;
 
 using Api.Auth.Models;
 using Api.Auth.Utils;
@@ -39,8 +40,12 @@ public static partial class AuthMutations
         UserEF? user = await db.Users.Where(u => u.Email == input.Email)
            .FirstOrDefaultAsync();
 
-        if (user is not null &&
-                Argon2id.VerifyHash(user.PasswordHash, Encoding.UTF8.GetBytes(input.Password.Normalize())))
+        var junkHash = new char[Argon2id.HashSize];
+        Argon2id.ComputeHash(junkHash, Encoding.UTF8.GetBytes("123"), ARGON2ID_ITER, ARGON2ID_MEM_BYTES);
+
+        var passworkdVerified = Argon2id.VerifyHash(user?.PasswordHash ?? new string(junkHash), Encoding.UTF8.GetBytes(input.Password.Normalize()));
+
+        if (user is not null && passworkdVerified)
         {
             var token = await LoginUtils.CreateUserSession(user.Id, input.ClientName, db);
             await db.SaveChangesAsync();
