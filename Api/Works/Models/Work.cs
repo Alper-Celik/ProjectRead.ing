@@ -15,6 +15,7 @@ using Riok.Mapperly.Abstractions;
 namespace Api.Works.Models;
 
 [Table("works")]
+[Index(nameof(WorkIdentifiers))]
 public class Work : IDbEntityMetadata
 {
     public static byte IdPostfix => (byte)IdPostfixes.Work;
@@ -60,7 +61,6 @@ public class WorkTypeConfiguration : IEntityTypeConfiguration<Work>
     public void Configure(EntityTypeBuilder<Work> builder)
     {
         builder
-            .ComplexCollection(w => w.WorkIdentifiers, wid => wid.ToJson())
-            .HasIndex(w => w.WorkIdentifiers.Select(wid => wid));
+            .ComplexCollection(w => w.WorkIdentifiers, wid => wid.ToJson());
     }
 }

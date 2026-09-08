@@ -23,11 +23,6 @@ namespace Api.Tests;
 public class MyWebApplicationFactory : TestWebApplicationFactory<Program>
 {
 
-    protected override void ConfigureWebApplicationBuilder(IHostApplicationBuilder hostApplicationBuilder)
-    {
-        base.ConfigureWebApplicationBuilder(hostApplicationBuilder);
-
-    }
 }
 
 public abstract class TestInit : WebApplicationTest<MyWebApplicationFactory, Program>
