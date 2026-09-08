@@ -45,7 +45,7 @@ public static partial class AuthQueriesUtils
 
             string Email,
             bool EmailVerified,
-            bool Admin) : IEntityMetadata
+            bool Admin) : IEntityMetadata, INode
     {
         public static byte IdPostfix => UserEF.IdPostfix;
 

@@ -39,7 +39,7 @@ public static partial class WorkQuery
 }
 
 [Node]
-public class Work : IEntityMetadata
+public class Work : IEntityMetadata, INode
 {
     public static byte IdPostfix => Models.Work.IdPostfix;
 
