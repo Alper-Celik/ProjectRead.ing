@@ -37,7 +37,7 @@ public static partial class AuthMutations
             LoginInput input)
     {
         var tx = await txAccessor.BeginOrGetTransactionAsync();
-        UserEF? user = await db.Users.Where(u => u.Email == input.Email)
+        UserEF? user = await db.Users.Where(u => u.Email == input.Email.NormalizeEmail())
            .FirstOrDefaultAsync();
 
         var junkHash = new char[Argon2id.HashSize];
@@ -79,7 +79,7 @@ public static partial class AuthMutations
             MetadataAddedAt = now,
             MetadataUpdatedAt = now,
 
-            Email = input.Email,
+            Email = input.Email.NormalizeEmail(),
             PasswordHash = hash,
             Admin = (await LoginUtils.CanAdminRegister(db)) && input.AdminRegistration
         };
@@ -124,14 +124,14 @@ public static class AuthMutationsUtils
             RuleFor(w => w).MustAsync(async (_, ct) => { await tx.BeginOrGetTransactionAsync(); return true; });
 
             RuleFor(r => r.Email)
-                .Must(e => new EmailAddressAttribute().IsValid(e))
+                .Must(e => new EmailAddressAttribute().IsValid(e.NormalizeEmail()))
                 .WithMessage("Email is invalid");
 
             RuleFor(r => r.Email)
                 .MustAsync(async (e, ct) =>
                         !await db.Users
-                        .Where(u => u.Email == e)
-                        .AnyAsync())
+                        .Where(u => u.Email.NormalizeEmail() == e)
+                        .AnyAsync(ct))
                 .WithMessage("Email is already used");
 
 

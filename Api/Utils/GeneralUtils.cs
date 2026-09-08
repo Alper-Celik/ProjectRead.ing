@@ -7,6 +7,8 @@ namespace Api.Utils;
 public static class GeneralUtils
 {
 
+    public static string NormalizeEmail(this string email) => email.Trim().Normalize().ToLowerInvariant();
+
     public static NodaTime.Instant Now() => NodaTime.SystemClock.Instance.GetCurrentInstant();
 
     public static byte[] NewRowVersion()
