@@ -5,7 +5,6 @@
 using Api.Auth.Handlers;
 using Api.Auth.Utils;
 using Api.Database;
-using FluentValidation.Validators;
 using GreenDonut.Data;
 using HotChocolate.Types.Pagination;
 using Microsoft.EntityFrameworkCore;
@@ -34,10 +33,45 @@ public static partial class AuthorQuerry
             .ToPageWithDataLoaderAsync(pg, authorById, ct);
 }
 
+[ObjectType<Author>]
+public static partial class AuthorNode
+{
+    [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkRead)]
+    [UseFiltering]
+    [UseSorting]
+    [GraphQLName("Works")]
+    public static async Task<PageConnection<Work>> GetWorksByAuthor(
+        [Parent] Author author,
+        [Service] PGContext db,
+        [Service] ICurrentUserId userId,
+        [Service] IWorkByIdDataLoader workById,
+        QueryContext<Work> qc,
+        PagingArguments pagingArguments,
+        CancellationToken ct
+    )
+    {
+        return await db
+            .Works.Where(w => w.OwnerId == userId.Id)
+            .Where(w => w.Authors.Select(a => a.Id).Contains(author.Id))
+            .ProjectToDto()
+            .With(qc)
+            .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
+    }
+
+    [GraphQLIgnore]
+    public static async Task<Author?> GetByIdAsync(
+        IAuthorByIdDataLoader authorById,
+        Guid id,
+        CancellationToken ct
+    ) => await authorById.LoadAsync(id, ct);
+}
+
 public static class AuthorDataLoaders
 {
-    [DataLoader]
-    public static async Task<Dictionary<Guid, Author>> GetAuthorByIdAsync(
+    public interface IAuthorByIdDataLoader : IBatchDataLoader<Guid, Author>;
+
+    [DataLoader<IAuthorByIdDataLoader>]
+    public static async Task<IDictionary<Guid, Author>> GetAuthorByIdAsync(
         IReadOnlyList<Guid> ids,
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
@@ -52,7 +86,10 @@ public static class AuthorDataLoaders
     }
 }
 
-[Node]
+[Node(
+    NodeResolverType = typeof(AuthorNode),
+    NodeResolver = nameof(AuthorNode.GetByIdAsync)
+)]
 public class Author : IEntityMetadata, INode
 {
     public static byte IdPostfix => Models.Author.IdPostfix;
@@ -69,12 +106,6 @@ public class Author : IEntityMetadata, INode
     public required string DisplayName { get; set; }
 
     public required List<string> PenNames { get; set; }
-
-    public static async Task<Author?> GetAsync(
-        IAuthorByIdDataLoader authorById,
-        Guid id,
-        CancellationToken ct
-    ) => await authorById.LoadAsync(id, ct);
 }
 
 [Mapper]

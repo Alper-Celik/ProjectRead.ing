@@ -7,7 +7,9 @@ using Api.Auth.Utils;
 using Api.Database;
 using GreenDonut.Data;
 using HotChocolate.Types.Pagination;
+using Microsoft.EntityFrameworkCore;
 using Riok.Mapperly.Abstractions;
+using static Api.Works.Queries.WorkDataLoaders;
 
 namespace Api.Works.Queries;
 
@@ -20,6 +22,7 @@ public static partial class WorkQuery
     public static async Task<PageConnection<Work>> GetWorks(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
+        [Service] IWorkByIdDataLoader workById,
         QueryContext<Work> qc,
         PagingArguments pagingArguments,
         CancellationToken ct
@@ -29,11 +32,75 @@ public static partial class WorkQuery
             .Works.Where(w => w.OwnerId == userId.Id)
             .ProjectToDto()
             .With(qc)
-            .ToPageAsync(pagingArguments, cancellationToken: ct);
+            .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
     }
 }
 
-[Node]
+[ObjectType<Work>]
+public static partial class WorkNode
+{
+    [GraphQLName("Authors")]
+    public static async Task<IReadOnlyList<Author>> GetAuthorsByWorkAsync(
+        [Parent] Work work,
+        IAuthorIdByWorkIdDataLoader authorIdLoader,
+        IAuthorByIdDataLoader authorLoader,
+        CancellationToken ct
+    )
+    {
+        var ids = await authorIdLoader.LoadAsync(work.Id, ct);
+        return (await authorLoader.LoadAsync(ids!, ct))!;
+    }
+
+    [GraphQLIgnore]
+    public static async Task<Work?> GetByIdAsync(
+        [Service] IWorkByIdDataLoader workById,
+        Guid id,
+        CancellationToken ct
+    ) => await workById.LoadAsync(id, cancellationToken: ct);
+}
+
+public static class WorkDataLoaders
+{
+    public interface IAuthorIdByWorkIdDataLoader : IBatchDataLoader<Guid, Guid[]>;
+
+    [DataLoader<IAuthorIdByWorkIdDataLoader>]
+    public static async Task<IDictionary<Guid, Guid[]>> GetAuthorIdByWorkIdAsync(
+        IReadOnlyList<Guid> ids,
+        [Service] PGContext db,
+        [Service] ICurrentUserId userId,
+        CancellationToken ct
+    )
+    {
+        return await db
+            .Works.Where(w => w.OwnerId == userId.Id)
+            .Where(w => ids.Contains(w.Id))
+            .Select(w => new
+            {
+                wId = w.Id,
+                aIds = w.Work_Authors.Select(wa => wa.AuthorId),
+            })
+            .ToDictionaryAsync(t => t.wId, t => t.aIds.ToArray(), ct);
+    }
+
+    public interface IWorkByIdDataLoader : IBatchDataLoader<Guid, Work>;
+
+    [DataLoader<IWorkByIdDataLoader>]
+    public static async Task<IDictionary<Guid, Work>> GetWorkByIdAsync(
+        IReadOnlyList<Guid> ids,
+        [Service] PGContext db,
+        [Service] ICurrentUserId userId,
+        CancellationToken ct
+    )
+    {
+        return await db
+            .Works.Where(w => w.OwnerId == userId.Id)
+            .Where(w => ids.Contains(w.Id))
+            .ProjectToDto()
+            .ToDictionaryAsync(w => w.Id, cancellationToken: ct);
+    }
+}
+
+[Node(NodeResolverType = typeof(WorkNode), NodeResolver = nameof(WorkNode.GetByIdAsync))]
 public class Work : IEntityMetadata, INode
 {
     public static byte IdPostfix => Models.Work.IdPostfix;
@@ -50,20 +117,14 @@ public class Work : IEntityMetadata, INode
     public NodaTime.Instant? WorkPublishedAt { get; set; }
     public NodaTime.Instant? WorkUpdatedAt { get; set; }
     public List<WorkIdentifier> WorkIdentifiers { get; set; } = [];
-
-    public record WorkIdentifier(string WorkIdentifierType, string WorkIdentifierValue);
-
-    public static async Task<Work?> GetAsync(
-        [Service] PGContext db,
-        Guid id,
-        CancellationToken ct
-    ) => WorkMapper.ToDto(await db.Works.FindAsync([id], cancellationToken: ct));
 }
+
+public record WorkIdentifier(string WorkIdentifierType, string WorkIdentifierValue);
 
 [Mapper]
 public static partial class WorkMapper
 {
-    public static partial Models.WorkIdentifier FromWorkIdDto(Work.WorkIdentifier w);
+    public static partial Models.WorkIdentifier FromWorkIdDto(WorkIdentifier w);
 
     public static partial Work? ToDto(Models.Work? w);
 

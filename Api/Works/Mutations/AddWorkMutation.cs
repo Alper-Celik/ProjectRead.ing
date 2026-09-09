@@ -45,7 +45,7 @@ public record AddWorkInput
 
     public Instant? WorkPublishedAt { get; init; }
     public Instant? WorkUpdatedAt { get; init; }
-    public List<Queries.Work.WorkIdentifier> WorkIdentifiers { get; init; } = [];
+    public List<Queries.WorkIdentifier> WorkIdentifiers { get; init; } = [];
     public required List<Guid> TagIds { get; init; } = [];
     public required List<Guid> AuthorIds { get; init; } = [];
 

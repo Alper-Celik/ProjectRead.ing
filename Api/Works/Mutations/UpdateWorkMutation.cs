@@ -23,8 +23,8 @@ public static partial class UpdateWorkMutations
     public static async Task<UpdateWorkPayload> UpdateWorkMutation(
         [Service] PGContext db,
         [Service] IEFTransactionDIAccessorService txGetter,
-        CancellationToken ct,
-        UpdateWorkInput input
+        UpdateWorkInput input,
+        CancellationToken ct
     )
     {
         var tx = await txGetter.BeginOrGetTransactionAsync();
@@ -39,7 +39,7 @@ public static partial class UpdateWorkMutations
 
         await db.SaveChangesAsync(cancellationToken: ct);
 
-        await tx.CommitAsync();
+        await tx.CommitAsync(ct);
         return new UpdateWorkPayload(WorkMapper.ToDto(work));
     }
 }
@@ -59,7 +59,7 @@ public record UpdateWorkInput : IBasicEntityMetadata
 
     public Optional<Instant?> WorkPublishedAt { get; init; }
     public Optional<Instant?> WorkUpdatedAt { get; init; }
-    public Optional<List<Queries.Work.WorkIdentifier>?> WorkIdentifiers { get; init; }
+    public Optional<List<Queries.WorkIdentifier>?> WorkIdentifiers { get; init; }
     public required Optional<List<Guid>?> TagIds { get; init; }
     public required Optional<List<Guid>?> AuthorIds { get; init; }
 
