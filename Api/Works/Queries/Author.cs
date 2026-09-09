@@ -9,6 +9,8 @@ using GreenDonut.Data;
 using HotChocolate.Types.Pagination;
 using Microsoft.EntityFrameworkCore;
 using Riok.Mapperly.Abstractions;
+using static Api.Works.Queries.AuthorDataLoaders;
+using static Api.Works.Queries.WorkDataLoaders;
 
 namespace Api.Works.Queries;
 

@@ -17,6 +17,9 @@ using NodaTime;
 using Scalar.AspNetCore;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
+[assembly: DataLoaderModule("ProjectReadingDataLoaders")]
+[assembly: Module("ProjectReadingApi")]
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.Configure<JsonOptions>(options =>
@@ -36,9 +39,10 @@ builder.Services.AddHttpLogging(opt =>
 
 builder.Services.AddOpenApi();
 builder.Services.AddSingleton<INodeIdSerializer, GuidNodeSerializer>();
+builder.Services.AddProjectReadingDataLoaders();
 builder
-    .AddGraphQL()
-    .AddApiTypes()
+    .Services.AddGraphQLServer()
+    .AddProjectReadingApi()
     .AddAuthorization()
     .AddNodaTime()
     .AddFiltering()
