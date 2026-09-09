@@ -20,9 +20,9 @@ public static partial class WorkQuery
     public static async Task<PageConnection<Work>> GetWorks(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
-        CancellationToken ct,
         QueryContext<Work> qc,
-        PagingArguments pagingArguments
+        PagingArguments pagingArguments,
+        CancellationToken ct
     )
     {
         return await db
