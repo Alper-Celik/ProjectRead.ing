@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using Api.Auth.Handlers;
+using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
 using GreenDonut.Data;
@@ -17,7 +18,7 @@ namespace Api.Works.Queries;
 [QueryType]
 public static partial class WorkQuery
 {
-    [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkRead)]
+    [PermissionCheckAuthorize(UserPermissionBits.WorkRead)]
     [UseFiltering]
     [UseSorting]
     public static async Task<PageConnection<Work>> GetWorks(
@@ -40,6 +41,9 @@ public static partial class WorkQuery
 [ObjectType<Work>]
 public static partial class WorkNode
 {
+    [PermissionCheckAuthorize(
+        UserPermissionBits.AuthorRead | UserPermissionBits.WorkRead
+    )]
     [GraphQLName("Authors")]
     public static async Task<IReadOnlyList<Author>> GetAuthorsByWorkAsync(
         [Parent] Work work,
@@ -52,6 +56,7 @@ public static partial class WorkNode
         return (await authorLoader.LoadAsync(ids!, ct))!;
     }
 
+    [PermissionCheckAuthorize(UserPermissionBits.AuthorRead)]
     [GraphQLIgnore]
     public static async Task<Work?> GetByIdAsync(
         [Service] IWorkByIdDataLoader workById,

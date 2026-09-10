@@ -23,7 +23,7 @@ public static partial class AuthorQuerry
     public static async Task<PageConnection<Author>> GetAuthors(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
-        IAuthorByIdDataLoader authorById,
+        [Service] IAuthorByIdDataLoader authorById,
         QueryContext<Author> qc,
         PagingArguments pg,
         CancellationToken ct
@@ -60,6 +60,7 @@ public static partial class AuthorNode
             .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
     }
 
+    [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkRead)]
     [GraphQLIgnore]
     public static async Task<Author?> GetByIdAsync(
         IAuthorByIdDataLoader authorById,
