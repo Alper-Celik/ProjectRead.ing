@@ -9,6 +9,21 @@ namespace Api.Utils;
 
 public static class GeneralUtils
 {
+    // Mostly Ai Generated - Start
+    public static IQueryable<T> WithQueryContext<T>(
+        this IQueryable<T> query,
+        QueryContext<T> qc
+    )
+        where T : IEntityMetadata =>
+        query.With(
+            qc with
+            {
+                Selector = null,
+            },
+            sort => sort.Operations.Length == 0 ? sort.AddAscending(t => t.Id) : sort
+        );
+
+    // Mostly Ai Generated - End
     public static async Task<Page<T>> ToPageWithDataLoaderAsync<T>(
         this IQueryable<T> table,
         PagingArguments pg,
@@ -17,7 +32,9 @@ public static class GeneralUtils
     )
         where T : IEntityMetadata
     {
-        var ids = await table.Select(t => t.Id).ToPageAsync(pg, ct);
+        var ids = await table
+            .Select(t => t.Id)
+            .ToPageAsync(pg, includeTotalCount: true, ct);
 
         var contents = await dataLoader.LoadAsync([.. ids], cancellationToken: ct)!;
 

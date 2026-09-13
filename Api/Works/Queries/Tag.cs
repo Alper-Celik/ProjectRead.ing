@@ -31,7 +31,7 @@ public static partial class TagQuery
         return await db
             .WorkTags.Where(wt => wt.OwnerId == userId.Id)
             .ProjectToDto()
-            .With(qc)
+            .WithQueryContext(qc)
             .ToPageWithDataLoaderAsync(pg, tagById, ct);
     }
 }
@@ -41,6 +41,7 @@ public static partial class TagNode
 {
     public interface ITagByIdDataLoader : IBatchDataLoader<Guid, Tag>;
 
+    [GraphQLIgnore]
     [DataLoader<ITagByIdDataLoader>]
     public static async Task<IDictionary<Guid, Tag>> GetTagByIdAsync(
         IReadOnlyList<Guid> ids,

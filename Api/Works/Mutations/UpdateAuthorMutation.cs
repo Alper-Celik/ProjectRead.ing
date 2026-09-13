@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-// Mostly Ai Generated
+// Mostly Ai Generated - Start
 using Api.Auth.Handlers;
 using Api.Auth.Models;
 using Api.Auth.Utils;
@@ -97,3 +97,4 @@ public record UpdateAuthorInput : IBasicEntityMetadata
             author.PenNames = input.PenNames.Value ?? [];
     }
 }
+// Mostly Ai Generated - End

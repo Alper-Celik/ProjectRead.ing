@@ -33,7 +33,7 @@ public static partial class WorkQuery
         return await db
             .Works.Where(w => w.OwnerId == userId.Id)
             .ProjectToDto()
-            .With(qc)
+            .WithQueryContext(qc)
             .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
     }
 }
@@ -69,6 +69,7 @@ public static class WorkDataLoaders
 {
     public interface IAuthorIdByWorkIdDataLoader : IBatchDataLoader<Guid, Guid[]>;
 
+    [GraphQLIgnore]
     [DataLoader<IAuthorIdByWorkIdDataLoader>]
     public static async Task<IDictionary<Guid, Guid[]>> GetAuthorIdByWorkIdAsync(
         IReadOnlyList<Guid> ids,
@@ -90,6 +91,7 @@ public static class WorkDataLoaders
 
     public interface IWorkByIdDataLoader : IBatchDataLoader<Guid, Work>;
 
+    [GraphQLIgnore]
     [DataLoader<IWorkByIdDataLoader>]
     public static async Task<IDictionary<Guid, Work>> GetWorkByIdAsync(
         IReadOnlyList<Guid> ids,

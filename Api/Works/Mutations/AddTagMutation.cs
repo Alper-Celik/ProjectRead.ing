@@ -2,7 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-// Mostly Ai Generated
+// Mostly Ai Generated - Start
 using Api.Auth.Handlers;
 using Api.Auth.Models;
 using Api.Auth.Utils;
@@ -70,3 +70,4 @@ public static partial class AddTagInputMapper
     public static ZonedDateTime FromInstantToZonedDateTime(Instant i) =>
         MapperUtils.FromInstantToZonedDateTime(i);
 }
+// Mostly Ai Generated - End

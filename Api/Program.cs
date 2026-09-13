@@ -13,6 +13,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NodaTime;
 using Scalar.AspNetCore;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
@@ -38,7 +39,6 @@ builder.Services.AddHttpLogging(opt =>
 });
 
 builder.Services.AddOpenApi();
-builder.Services.AddSingleton<INodeIdSerializer, GuidNodeSerializer>();
 builder.Services.AddProjectReadingDataLoaders();
 builder
     .Services.AddGraphQLServer()
@@ -66,6 +66,24 @@ builder
         opt.RegisterNodeInterface = true;
         opt.AddNodesField = true;
         opt.EnsureAllNodesCanBeResolved = true;
+    })
+    .ConfigureSchemaServices(services =>
+    {
+        services.RemoveAll<INodeIdSerializer>();
+        services.AddSingleton<INodeIdSerializer, GuidNodeSerializer>();
+    })
+    // TODO: revisit the filter cost model. Weights are flattened to 1 to work around the
+    // default cost analyzer expanding the whole filter input graph * VariableMultiplier.
+    .ModifyCostOptions(opt =>
+    {
+        opt.DefaultResolverCost = 1;
+        opt.Filtering.DefaultFilterArgumentCost = 1;
+        opt.Filtering.DefaultFilterOperationCost = 1;
+        opt.Filtering.DefaultExpensiveFilterOperationCost = 1;
+        opt.Filtering.VariableMultiplier = 1;
+        opt.Sorting.DefaultSortArgumentCost = 1;
+        opt.Sorting.DefaultSortOperationCost = 1;
+        opt.Sorting.VariableMultiplier = 1;
     })
     .ModifyServerOptions(opt =>
     {

@@ -31,7 +31,7 @@ public static partial class AuthorQuery
         await db
             .Authors.Where(a => a.OwnerId == userId.Id)
             .ProjectToDto()
-            .With(qc)
+            .WithQueryContext(qc)
             .ToPageWithDataLoaderAsync(pg, authorById, ct);
 }
 
@@ -56,7 +56,7 @@ public static partial class AuthorNode
             .Works.Where(w => w.OwnerId == userId.Id)
             .Where(w => w.Authors.Select(a => a.Id).Contains(author.Id))
             .ProjectToDto()
-            .With(qc)
+            .WithQueryContext(qc)
             .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
     }
 
@@ -73,6 +73,7 @@ public static class AuthorDataLoaders
 {
     public interface IAuthorByIdDataLoader : IBatchDataLoader<Guid, Author>;
 
+    [GraphQLIgnore]
     [DataLoader<IAuthorByIdDataLoader>]
     public static async Task<IDictionary<Guid, Author>> GetAuthorByIdAsync(
         IReadOnlyList<Guid> ids,
