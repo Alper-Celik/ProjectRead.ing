@@ -70,6 +70,10 @@ builder
     .ModifyServerOptions(opt =>
     {
         opt.Batching = HotChocolate.AspNetCore.AllowedBatching.All;
+    })
+    .ModifyRequestOptions(opt =>
+    {
+        opt.IncludeExceptionDetails = builder.Environment.IsDevelopment();
     });
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
