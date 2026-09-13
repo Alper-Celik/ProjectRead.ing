@@ -41,6 +41,7 @@ public static partial class TagNode
 {
     public interface ITagByIdDataLoader : IBatchDataLoader<Guid, Tag>;
 
+    [DataLoader<ITagByIdDataLoader>]
     public static async Task<IDictionary<Guid, Tag>> GetTagByIdAsync(
         IReadOnlyList<Guid> ids,
         [Service] PGContext db,
@@ -54,9 +55,17 @@ public static partial class TagNode
             .ProjectToDto()
             .ToDictionaryAsync(wt => wt.Id, ct);
     }
+
+    [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.TagRead)]
+    [GraphQLIgnore]
+    public static async Task<Tag?> GetByIdAsync(
+        ITagByIdDataLoader tagById,
+        Guid id,
+        CancellationToken ct
+    ) => await tagById.LoadAsync(id, ct);
 }
 
-[Node]
+[Node(NodeResolverType = typeof(TagNode), NodeResolver = nameof(TagNode.GetByIdAsync))]
 public class Tag : IEntityMetadata, INode
 {
     public static byte IdPostfix => WorkTag.IdPostfix;
