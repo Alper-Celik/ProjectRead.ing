@@ -1,3 +1,10 @@
+<!--
+SPDX-FileCopyrightText: 2026 Alper Çelik <alper@alper-celik.dev>
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+SPDX-License-Identifier: Apache-2.0
+-->
+
 # ProjectRead.ing - Agent Reference
 
 ## Build Commands
