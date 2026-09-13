@@ -98,7 +98,6 @@ jobs:
 
       - wait: lint-dotnet
       - name: tests
-        continue-on-error: true
         env:
           TUNIT_GITHUB_REPORTER_STYLE: full
         run: just ci-test
