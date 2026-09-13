@@ -14,7 +14,7 @@ using Riok.Mapperly.Abstractions;
 namespace Api.Works.Queries;
 
 [QueryType]
-public static partial class TagQuerry
+public static partial class TagQuery
 {
     [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.TagRead)]
     [UseFiltering]

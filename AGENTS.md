@@ -177,7 +177,7 @@ public record UpdateXxxInput : IBasicEntityMetadata
 
 ```csharp
 [QueryType]
-public static partial class XxxQuerry
+public static partial class XxxQuery
 {
     [PermissionCheckAuthorize(UserPermissionBits.XxxRead)]
     [UseFiltering]
@@ -278,7 +278,7 @@ public DbSet<UserTokenEF> UserTokens { get; set; }
 - All entities are tenant-scoped (filtered by `OwnerId == userId.Id`)
 - `Now()` from `Api.Utils.GeneralUtils` returns `NodaTime.Instant`
 - SPDX license headers on all files
-- Query class names use `Querry` (note: intentional spelling in this project)
+- Query class names use `Query`
 - Update mutations use transactions via `IEFTransactionDIAccessorService`
 - Add mutations do NOT use transactions
 - Navigation properties on EF models should have `[MapperIgnore]` or be ignored in mapper with `[MapperIgnoreTarget]`/`[MapperIgnoreSource]`

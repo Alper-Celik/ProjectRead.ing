@@ -15,7 +15,7 @@ using static Api.Works.Queries.WorkDataLoaders;
 namespace Api.Works.Queries;
 
 [QueryType]
-public static partial class AuthorQuerry
+public static partial class AuthorQuery
 {
     [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.AuthorRead)]
     [UseFiltering]
