@@ -45,6 +45,8 @@ public class WorksMutationTests : WorksTestBase
                         n.LastName,
                         n.DisplayName,
                         n.PenNames,
+                        n.MetadataAddedAt,
+                        n.MetadataUpdatedAt,
                     })
             )
         );
@@ -55,6 +57,7 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(node.LastName).IsEqualTo("Doe");
         await Assert.That(node.DisplayName).IsEqualTo("Jane Doe");
         await Assert.That(node.PenNames).IsEquivalentTo(["J. D.", "Janey"]);
+        await Assert.That(node.MetadataAddedAt).IsEqualTo(node.MetadataUpdatedAt);
     }
 
     [Test]
@@ -62,6 +65,27 @@ public class WorksMutationTests : WorksTestBase
     {
         var client = await AuthenticatedClient();
         var (id, rowVersion) = await AddAuthor(client, displayName: "Old Name");
+
+        var filter = new AuthorFilterInput
+        {
+            Id = new UuidOperationFilterInput { Eq = id },
+        };
+
+        var before = await client.Query(q =>
+            q.Authors(
+                first: 10,
+                after: null,
+                last: null,
+                before: null,
+                where: filter,
+                order: null,
+                selector: c =>
+                    c.Nodes(n => new { n.MetadataAddedAt, n.MetadataUpdatedAt })
+            )
+        );
+
+        await Assert.That(before.Errors).IsNull().Or.IsEmpty();
+        var beforeNode = before.Data!.Single();
 
         var result = await client.Mutation(
             new
@@ -88,6 +112,8 @@ public class WorksMutationTests : WorksTestBase
                             a.LastName,
                             a.PenNames,
                             a.RowVersion,
+                            a.MetadataAddedAt,
+                            a.MetadataUpdatedAt,
                         })
                 )
         );
@@ -98,6 +124,12 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(result.Data.LastName).IsEqualTo("Name");
         await Assert.That(result.Data.PenNames).IsEquivalentTo(["NP"]);
         await Assert.That(result.Data.RowVersion).IsEqualTo(rowVersion + 1);
+        await Assert
+            .That(result.Data.MetadataAddedAt)
+            .IsEqualTo(beforeNode.MetadataAddedAt);
+        await Assert
+            .That(result.Data.MetadataUpdatedAt)
+            .IsGreaterThan(beforeNode.MetadataUpdatedAt);
     }
 
     [Test]
@@ -172,6 +204,8 @@ public class WorksMutationTests : WorksTestBase
                         n.Id,
                         n.TagName,
                         n.TagNamespace,
+                        n.MetadataAddedAt,
+                        n.MetadataUpdatedAt,
                     })
             )
         );
@@ -180,6 +214,7 @@ public class WorksMutationTests : WorksTestBase
         var node = result.Data!.Single();
         await Assert.That(node.TagName).IsEqualTo("Sci-Fi");
         await Assert.That(node.TagNamespace).IsEquivalentTo(["genre", "sub"]);
+        await Assert.That(node.MetadataAddedAt).IsEqualTo(node.MetadataUpdatedAt);
     }
 
     [Test]
@@ -187,6 +222,24 @@ public class WorksMutationTests : WorksTestBase
     {
         var client = await AuthenticatedClient();
         var (id, rowVersion) = await AddTag(client, tagName: "Old");
+
+        var filter = new TagFilterInput { Id = new UuidOperationFilterInput { Eq = id } };
+
+        var before = await client.Query(q =>
+            q.Tags(
+                first: 10,
+                after: null,
+                last: null,
+                before: null,
+                where: filter,
+                order: null,
+                selector: c =>
+                    c.Nodes(n => new { n.MetadataAddedAt, n.MetadataUpdatedAt })
+            )
+        );
+
+        await Assert.That(before.Errors).IsNull().Or.IsEmpty();
+        var beforeNode = before.Data!.Single();
 
         var result = await client.Mutation(
             new
@@ -209,6 +262,8 @@ public class WorksMutationTests : WorksTestBase
                             t.TagName,
                             t.TagNamespace,
                             t.RowVersion,
+                            t.MetadataAddedAt,
+                            t.MetadataUpdatedAt,
                         })
                 )
         );
@@ -217,6 +272,12 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(result.Data!.TagName).IsEqualTo("New");
         await Assert.That(result.Data.TagNamespace).IsEquivalentTo(["new_ns"]);
         await Assert.That(result.Data.RowVersion).IsEqualTo(rowVersion + 1);
+        await Assert
+            .That(result.Data.MetadataAddedAt)
+            .IsEqualTo(beforeNode.MetadataAddedAt);
+        await Assert
+            .That(result.Data.MetadataUpdatedAt)
+            .IsGreaterThan(beforeNode.MetadataUpdatedAt);
     }
 
     [Test]
@@ -313,6 +374,8 @@ public class WorksMutationTests : WorksTestBase
                         n.Description,
                         n.WorkPublishedAt,
                         n.WorkUpdatedAt,
+                        n.MetadataAddedAt,
+                        n.MetadataUpdatedAt,
                         Authors = n.Authors(a => new { a.DisplayName }),
                         Identifiers = n.WorkIdentifiers(w => new
                         {
@@ -329,6 +392,7 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(node.Description).IsEqualTo("A description");
         await Assert.That(node.WorkPublishedAt).IsNotNull();
         await Assert.That(node.WorkUpdatedAt).IsNotNull();
+        await Assert.That(node.MetadataAddedAt).IsEqualTo(node.MetadataUpdatedAt);
         await Assert.That(node.Identifiers).HasSingleItem();
         await Assert.That(node.Identifiers[0].WorkIdentifierType).IsEqualTo("isbn");
         await Assert.That(node.Identifiers[0].WorkIdentifierValue).IsEqualTo("123");
@@ -451,6 +515,27 @@ public class WorksMutationTests : WorksTestBase
             authorIds: [authorA]
         );
 
+        var filter = new WorkFilterInput
+        {
+            Id = new UuidOperationFilterInput { Eq = id },
+        };
+
+        var before = await client.Query(q =>
+            q.Works(
+                first: 10,
+                after: null,
+                last: null,
+                before: null,
+                where: filter,
+                order: null,
+                selector: c =>
+                    c.Nodes(n => new { n.MetadataAddedAt, n.MetadataUpdatedAt })
+            )
+        );
+
+        await Assert.That(before.Errors).IsNull().Or.IsEmpty();
+        var beforeNode = before.Data!.Single();
+
         var publishedAt = DateTimeOffset.UtcNow.AddDays(-1);
         var updatedAt = DateTimeOffset.UtcNow;
 
@@ -489,6 +574,8 @@ public class WorksMutationTests : WorksTestBase
                             w.WorkPublishedAt,
                             w.WorkUpdatedAt,
                             w.RowVersion,
+                            w.MetadataAddedAt,
+                            w.MetadataUpdatedAt,
                             Identifiers = w.WorkIdentifiers(x => new
                             {
                                 x.WorkIdentifierType,
@@ -505,6 +592,12 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(result.Data.WorkPublishedAt).IsNotNull();
         await Assert.That(result.Data.WorkUpdatedAt).IsNotNull();
         await Assert.That(result.Data.RowVersion).IsEqualTo(rowVersion + 1);
+        await Assert
+            .That(result.Data.MetadataAddedAt)
+            .IsEqualTo(beforeNode.MetadataAddedAt);
+        await Assert
+            .That(result.Data.MetadataUpdatedAt)
+            .IsGreaterThan(beforeNode.MetadataUpdatedAt);
         await Assert.That(result.Data.Identifiers).HasSingleItem();
         await Assert
             .That(result.Data.Identifiers[0].WorkIdentifierValue)
@@ -535,6 +628,27 @@ public class WorksMutationTests : WorksTestBase
             authorIds: [authorId]
         );
 
+        var filter = new WorkFilterInput
+        {
+            Id = new UuidOperationFilterInput { Eq = id },
+        };
+
+        var before = await client.Query(q =>
+            q.Works(
+                first: 10,
+                after: null,
+                last: null,
+                before: null,
+                where: filter,
+                order: null,
+                selector: c =>
+                    c.Nodes(n => new { n.MetadataAddedAt, n.MetadataUpdatedAt })
+            )
+        );
+
+        await Assert.That(before.Errors).IsNull().Or.IsEmpty();
+        var beforeNode = before.Data!.Single();
+
         var result = await client.Mutation(
             new
             {
@@ -554,6 +668,8 @@ public class WorksMutationTests : WorksTestBase
                     p =>
                         p.Work(w => new
                         {
+                            w.MetadataAddedAt,
+                            w.MetadataUpdatedAt,
                             Identifiers = w.WorkIdentifiers(x => new
                             {
                                 x.WorkIdentifierType,
@@ -567,6 +683,12 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(result.Errors).IsNull().Or.IsEmpty();
         await Assert.That(result.Data!.Identifiers).IsEmpty();
         await Assert.That(result.Data.Authors).IsEmpty();
+        await Assert
+            .That(result.Data.MetadataAddedAt)
+            .IsEqualTo(beforeNode.MetadataAddedAt);
+        await Assert
+            .That(result.Data.MetadataUpdatedAt)
+            .IsGreaterThan(beforeNode.MetadataUpdatedAt);
     }
 
     [Test]
