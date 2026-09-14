@@ -7,11 +7,13 @@ using Api.Auth.Handlers;
 using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
+using Api.Database.Utils;
 using Api.Utils;
 using Api.Works.Queries;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Npgsql;
 using Riok.Mapperly.Abstractions;
 
 namespace Api.Works.Mutations;
@@ -23,15 +25,24 @@ public static partial class AddTagMutations
     public static async Task<AddTagPayload> AddTagMutation(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
+        [Service] IEFTransactionDIAccessorService txGetter,
         AddTagInput input,
         CancellationToken ct
     )
     {
+        var tx = await txGetter.BeginOrGetTransactionAsync();
+
         var tag = AddTagInputMapper.CreateFromDto(input, userId.Id!.Value, Now());
 
         await db.AddAsync(tag, cancellationToken: ct);
-        await db.SaveChangesAsync(cancellationToken: ct);
+        await db.SaveChangesOrThrowAsync(
+            PostgresErrorCodes.UniqueViolation,
+            ErrorCodes.TAG_ALREADY_EXISTS,
+            "A tag with the same namespace and name already exists",
+            ct
+        );
 
+        await tx.CommitAsync(ct);
         return new AddTagPayload(TagMapper.ToDto(tag));
     }
 }
@@ -46,8 +57,14 @@ public record AddTagInput
 
     public class AddTagInputValidator : AbstractValidator<AddTagInput>
     {
-        public AddTagInputValidator(PGContext db, ICurrentUserId userId)
+        public AddTagInputValidator(
+            PGContext db,
+            ICurrentUserId userId,
+            IEFTransactionDIAccessorService tx
+        )
         {
+            RuleFor(t => t).BeginTransaction(tx);
+
             RuleFor(t => t)
                 .MustAsync(
                     async (input, ct) =>

@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 using System.Data;
 using System.Linq.Expressions;
+using Api.Database.Utils;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,6 +27,20 @@ public static class ValidatorUtils
             .WithErrorCode(ErrorCodes.IS_NOT_DISTINCT);
     }
 
+    public static void BeginTransaction<T, TProp>(
+        this IRuleBuilderInitial<T, TProp> rule,
+        IEFTransactionDIAccessorService tx
+    )
+    {
+        rule.MustAsync(
+            async (_, ct) =>
+            {
+                await tx.BeginOrGetTransactionAsync();
+                return true;
+            }
+        );
+    }
+
     public static IRuleBuilderOptions<T, TProp> IdsMustExist<T, TProp, TTarget>(
         this IRuleBuilder<T, TProp> rule,
         DbSet<TTarget> target,
@@ -37,7 +52,7 @@ public static class ValidatorUtils
         return rule.MustAsync(
                 async (t, ids, ct) =>
                 {
-                    var q = target.Select(t => t).Where(t => ids.Contains(t.Id));
+                    var q = target.Where(t => ids.Contains(t.Id));
 
                     if (ownerId is not null)
                     {
@@ -45,7 +60,7 @@ public static class ValidatorUtils
                     }
 
                     return (
-                        await q.Select(t => t.Id).Distinct().Order().ToArrayAsync()
+                        await q.Select(t => t.Id).Distinct().Order().ToArrayAsync(ct)
                     ).SequenceEqual(ids.Distinct().Order());
                 }
             )

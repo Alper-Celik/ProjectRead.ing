@@ -7,6 +7,7 @@ using Api.Auth.Handlers;
 using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
+using Api.Database.Utils;
 using Api.Utils;
 using Api.Works.Models;
 using Api.Works.Queries;
@@ -24,15 +25,19 @@ public static partial class AddAuthorMutations
     public static async Task<AddAuthorPayload> AddAuthorMutation(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
+        [Service] IEFTransactionDIAccessorService txGetter,
         AddAuthorInput input,
         CancellationToken ct
     )
     {
+        var tx = await txGetter.BeginOrGetTransactionAsync();
+
         var author = AddAuthorInputMapper.CreateFromDto(input, userId.Id!.Value, Now());
 
         await db.AddAsync(author, cancellationToken: ct);
         await db.SaveChangesAsync(cancellationToken: ct);
 
+        await tx.CommitAsync(ct);
         return new AddAuthorPayload(AuthorMapper.ToDto(author));
     }
 }

@@ -4,8 +4,15 @@
 
 // Mostly Ai Generated - Start
 using System.Threading.Tasks;
+using Api.Database;
+using Api.Utils;
+using Api.Works.Models;
+using HotChocolate;
+using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using ZeroQL;
 using ZeroQL.Client;
+using static Api.Utils.GeneralUtils;
 
 namespace Api.Tests;
 
@@ -215,6 +222,46 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(node.TagName).IsEqualTo("Sci-Fi");
         await Assert.That(node.TagNamespace).IsEquivalentTo(["genre", "sub"]);
         await Assert.That(node.MetadataAddedAt).IsEqualTo(node.MetadataUpdatedAt);
+    }
+
+    [Test]
+    public async Task DbExceptionUtils_MapsUniqueViolationToTagAlreadyExists(
+        CancellationToken ct
+    )
+    {
+        var client = await AuthenticatedClient();
+        await AddTag(client, tagName: "DupRace", tagNamespace: ["race"]);
+
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetService<PGContext>()!;
+        var ownerId = await db
+            .Users.Where(u => u.Email == "works@projectread.ing")
+            .Select(u => u.Id)
+            .SingleAsync(cancellationToken: ct);
+
+        var dupe = new WorkTag
+        {
+            Id = Guid.CreateVersion7().WithPostfix(IdPostfixes.WorkTag),
+            TagName = "DupRace",
+            TagNamespace = ["race"],
+            OwnerId = ownerId,
+            RowVersion = 0,
+            MetadataAddedAt = Now(),
+            MetadataUpdatedAt = Now(),
+        };
+        db.Add(dupe);
+
+        var act = async () =>
+            await db.SaveChangesOrThrowAsync(
+                PostgresErrorCodes.UniqueViolation,
+                ErrorCodes.TAG_ALREADY_EXISTS,
+                "A tag with the same namespace and name already exists",
+                ct
+            );
+        var exception = await Assert.That(act).Throws<GraphQLException>();
+        await Assert
+            .That(exception?.Errors.Single().Code)
+            .IsEqualTo("TAG_ALREADY_EXISTS");
     }
 
     [Test]

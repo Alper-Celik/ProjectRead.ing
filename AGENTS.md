@@ -426,11 +426,12 @@ public DbSet<UserTokenEF> UserTokens { get; set; }
 - Navigation properties on EF models should have `[MapperIgnore]` or be ignored in mapper with `[MapperIgnoreTarget]`/`[MapperIgnoreSource]`
 - Tag uniqueness is guarded three ways: friendly `TAG_ALREADY_EXISTS` FluentValidation
   checks (Add/UpdateTag), the DB unique index on `(OwnerId, TagNamespace, TagName)`
-  (`Api/Works/Models/WorkTag.cs`), and `TagMutationsUtils.SaveChangesAsyncOrThrowDuplicateTagAsync`
-  which maps a PG 23505 unique-violation at `SaveChangesAsync` to a `GraphQLException`
-  carrying `extensions.code`/`extensions.errorCode` = `TAG_ALREADY_EXISTS` — the catch
-  covers the validator's check-then-insert race under READ COMMITTED. Use this helper (not
-  a naked `SaveChangesAsync`) when a mutation writes a row guarded by a unique index.
+  (`Api/Works/Models/WorkTag.cs`), and `db.SaveChangesOrThrowAsync(sqlState, code, message, ct)`
+  (`Api/Utils/DbExceptionUtils.cs`) which maps a PG error with that `SqlState` at
+  `SaveChangesAsync` to a `GraphQLException` with that code (`SetCode`, i.e. `extensions.code`)
+  and message — the catch covers the validator's check-then-insert race under READ COMMITTED.
+  Use this helper (not a naked `SaveChangesAsync`) when a mutation writes a row guarded by a
+  unique index; pass a `null` `sqlState` to match any PostgreSQL error.
 - GraphQL cost model: `Filtering`/`Sorting` `VariableMultiplier = 1` and `MaxFieldCost`/
   `MaxTypeCost = 20_000` are REQUIRED for nested connection filtering (`Tag.works(where:)`,
   `Author.works(where:)`) — the defaults plus a 5k cap rejected such queries with `HC0047`.

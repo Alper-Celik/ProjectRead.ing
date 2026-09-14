@@ -14,6 +14,7 @@ using Api.Works.Queries;
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
+using Npgsql;
 
 namespace Api.Works.Mutations;
 
@@ -38,7 +39,12 @@ public static partial class UpdateTagMutations
         tag.RowVersion += 1;
         tag.MetadataUpdatedAt = Now();
 
-        await db.SaveChangesAsync(cancellationToken: ct);
+        await db.SaveChangesOrThrowAsync(
+            PostgresErrorCodes.UniqueViolation,
+            ErrorCodes.TAG_ALREADY_EXISTS,
+            "A tag with the same namespace and name already exists",
+            ct
+        );
 
         await tx.CommitAsync(ct);
         return new UpdateTagPayload(TagMapper.ToDto(tag));
@@ -65,14 +71,7 @@ public record UpdateTagInput : IBasicEntityMetadata
             IEFTransactionDIAccessorService tx
         )
         {
-            RuleFor(w => w)
-                .MustAsync(
-                    async (_, ct) =>
-                    {
-                        await tx.BeginOrGetTransactionAsync();
-                        return true;
-                    }
-                );
+            RuleFor(w => w).BeginTransaction(tx);
 
             RuleFor(w => w.Id).IdMustExist(db.WorkTags, userId.Id);
 

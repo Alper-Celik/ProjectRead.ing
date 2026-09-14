@@ -67,14 +67,7 @@ public record UpdateAuthorInput : IBasicEntityMetadata
             IEFTransactionDIAccessorService tx
         )
         {
-            RuleFor(w => w)
-                .MustAsync(
-                    async (_, ct) =>
-                    {
-                        await tx.BeginOrGetTransactionAsync();
-                        return true;
-                    }
-                );
+            RuleFor(a => a).BeginTransaction(tx);
 
             RuleFor(w => w.Id).IdMustExist(db.Authors, userId.Id);
 

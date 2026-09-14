@@ -53,8 +53,7 @@ public record UpdateWorkInput : IBasicEntityMetadata
     public Guid Id { get; init; }
     public int RowVersion { get; init; }
 
-    [DefaultValue("")]
-    public required Optional<string> Title { get; init; }
+    public Optional<string> Title { get; init; }
     public Optional<string?> Description { get; init; }
 
     public Optional<Instant?> WorkPublishedAt { get; init; }
@@ -71,14 +70,7 @@ public record UpdateWorkInput : IBasicEntityMetadata
             IEFTransactionDIAccessorService tx
         )
         {
-            RuleFor(w => w)
-                .MustAsync(
-                    async (_, ct) =>
-                    {
-                        await tx.BeginOrGetTransactionAsync();
-                        return true;
-                    }
-                );
+            RuleFor(w => w).BeginTransaction(tx);
 
             RuleFor(w => w.Id).IdMustExist(db.Works, userId.Id);
 
