@@ -12,4 +12,5 @@ public static partial class ErrorCodes
     public const string ID_DOES_NOT_EXIST = "ID_DOES_NOT_EXIST";
     public const string IS_NOT_DISTINCT = "IS_NOT_DISTINCT";
     public const string ROW_VERSION_MISMATCH = "ROW_VERSION_MISMATCH";
+    public const string TAG_ALREADY_EXISTS = "TAG_ALREADY_EXISTS";
 }

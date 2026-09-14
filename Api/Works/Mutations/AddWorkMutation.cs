@@ -4,6 +4,7 @@
 using Api.Auth.Handlers;
 using Api.Auth.Utils;
 using Api.Database;
+using Api.Database.Utils;
 using Api.Utils;
 using Api.Works.Models;
 using Api.Works.Queries;
@@ -22,15 +23,19 @@ public static partial class AddWorkMutations
     public static async Task<AddWorkPayload> AddWorkMutation(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
+        [Service] IEFTransactionDIAccessorService txGetter,
         CancellationToken ct,
         AddWorkInput input
     )
     {
+        var tx = await txGetter.BeginOrGetTransactionAsync();
+
         var work = AddWorkInputMapper.CreateFromDto(input, userId.Id!.Value, Now());
 
         await db.AddAsync(work, cancellationToken: ct);
         await db.SaveChangesAsync(cancellationToken: ct);
 
+        await tx.CommitAsync(ct);
         return new AddWorkPayload(WorkMapper.ToDto(work));
     }
 }
@@ -45,16 +50,20 @@ public record AddWorkInput
 
     public Instant? WorkPublishedAt { get; init; }
     public Instant? WorkUpdatedAt { get; init; }
-    public List<Queries.Work.WorkIdentifier> WorkIdentifiers { get; init; } = [];
+    public List<Queries.WorkIdentifier> WorkIdentifiers { get; init; } = [];
     public required List<Guid> TagIds { get; init; } = [];
     public required List<Guid> AuthorIds { get; init; } = [];
 
-    public class AddWorkInputValidator
-        : AbstractValidator<AddWorkInput>,
-            IRequiresOwnScopeValidator
+    public class AddWorkInputValidator : AbstractValidator<AddWorkInput>
     {
-        public AddWorkInputValidator(PGContext db, ICurrentUserId userId)
+        public AddWorkInputValidator(
+            PGContext db,
+            ICurrentUserId userId,
+            IEFTransactionDIAccessorService tx
+        )
         {
+            RuleFor(w => w).BeginTransaction(tx);
+
             RuleFor(w => w.TagIds).MustBeDistinct(nameof(TagIds));
             RuleFor(w => w.TagIds).IdsMustExist(db.WorkTags, userId.Id);
 

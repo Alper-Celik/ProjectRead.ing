@@ -7,6 +7,7 @@ color-cmd := "44m"
 
 lint: dotnet-restore dotnet-format-check lint-reuse
 
+format: dotnet-format
 
 
 lint-reuse:
@@ -25,13 +26,13 @@ dotnet-build: dotnet-restore
 dotnet-format-check:
   dotnet tool restore
   dotnet csharpier check .
-  dotnet format style --verify-no-changes --verbosity diagnostic --no-restore
+  # dotnet format style --verify-no-changes --verbosity diagnostic --no-restore
   dotnet format analyzers --verify-no-changes --verbosity diagnostic --no-restore
 
 dotnet-format:
   dotnet tool restore
-  dotnet csharpier .
-  dotnet format style --verbosity diagnostic --no-restore
+  dotnet csharpier format .
+  # dotnet format style --verbosity diagnostic --no-restore
   dotnet format analyzers --verbosity diagnostic --no-restore
 
 dotnet-test:

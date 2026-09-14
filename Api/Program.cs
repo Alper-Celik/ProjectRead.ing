@@ -13,9 +13,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using NodaTime;
 using Scalar.AspNetCore;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
+
+[assembly: DataLoaderModule("ProjectReadingDataLoaders")]
+[assembly: Module("ProjectReadingApi")]
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -30,15 +34,16 @@ builder.Services.AddHttpLogging(opt =>
 {
     if (builder.Environment.IsDevelopment())
     {
+        opt.CombineLogs = true;
         opt.LoggingFields = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.All;
     }
 });
 
 builder.Services.AddOpenApi();
-builder.Services.AddSingleton<INodeIdSerializer, GuidNodeSerializer>();
+builder.Services.AddProjectReadingDataLoaders();
 builder
-    .AddGraphQL()
-    .AddApiTypes()
+    .Services.AddGraphQLServer()
+    .AddProjectReadingApi()
     .AddAuthorization()
     .AddNodaTime()
     .AddFiltering()
@@ -63,9 +68,25 @@ builder
         opt.AddNodesField = true;
         opt.EnsureAllNodesCanBeResolved = true;
     })
+    .ConfigureSchemaServices(services =>
+    {
+        services.RemoveAll<INodeIdSerializer>();
+        services.AddSingleton<INodeIdSerializer, GuidNodeSerializer>();
+    })
+    .ModifyCostOptions(opt =>
+    {
+        opt.Sorting.VariableMultiplier = 1;
+        opt.Filtering.VariableMultiplier = 1;
+        opt.MaxFieldCost = 20_000;
+        opt.MaxTypeCost = 20_000;
+    })
     .ModifyServerOptions(opt =>
     {
         opt.Batching = HotChocolate.AspNetCore.AllowedBatching.All;
+    })
+    .ModifyRequestOptions(opt =>
+    {
+        opt.IncludeExceptionDetails = builder.Environment.IsDevelopment();
     });
 
 builder.Services.AddValidatorsFromAssemblyContaining<Program>();
