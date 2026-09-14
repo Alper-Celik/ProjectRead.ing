@@ -233,5 +233,58 @@ public class WorksQueryTests : WorksTestBase
         await Assert.That(page.Nodes).HasSingleItem();
         await Assert.That(page.Nodes![0].Title).IsEqualTo("First");
     }
+
+    [Test]
+    public async Task Works_CanBePaginatedWithCursors(CancellationToken ct)
+    {
+        var client = await AuthenticatedClient();
+        await AddWork(client, title: "Alpha");
+        await AddWork(client, title: "Beta");
+
+        var order = new[] { new WorkSortInput { Title = SortEnumType.Asc } };
+
+        var first = await client.Query(q =>
+            q.Works(
+                first: 1,
+                after: null,
+                last: null,
+                before: null,
+                where: null,
+                order: order,
+                selector: c => new
+                {
+                    Nodes = c.Nodes(w => new { w.Title }),
+                    PageInfo = c.PageInfo(p => new
+                    {
+                        p.StartCursor,
+                        p.EndCursor,
+                        p.HasNextPage,
+                    }),
+                }
+            )
+        );
+
+        await Assert.That(first.Errors).IsNull().Or.IsEmpty();
+        await Assert.That(first.Data!.Nodes![0].Title).IsEqualTo("Alpha");
+        await Assert.That(first.Data.PageInfo.HasNextPage).IsTrue();
+        await Assert.That(first.Data.PageInfo.StartCursor).IsNotNull();
+        await Assert.That(first.Data.PageInfo.EndCursor).IsNotNull();
+
+        var endCursor = first.Data.PageInfo.EndCursor!;
+        var second = await client.Query(q =>
+            q.Works(
+                first: 1,
+                after: endCursor,
+                last: null,
+                before: null,
+                where: null,
+                order: order,
+                selector: c => new { Nodes = c.Nodes(w => new { w.Title }) }
+            )
+        );
+
+        await Assert.That(second.Errors).IsNull().Or.IsEmpty();
+        await Assert.That(second.Data!.Nodes![0].Title).IsEqualTo("Beta");
+    }
 }
 // Mostly Ai Generated - End

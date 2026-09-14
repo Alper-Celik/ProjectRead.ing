@@ -32,13 +32,13 @@ public static class GeneralUtils
     )
         where T : IEntityMetadata
     {
-        var ids = await table
-            .Select(t => t.Id)
-            .ToPageAsync(pg, includeTotalCount: true, ct);
+        var page = await table.ToPageAsync(pg, includeTotalCount: true, ct);
 
-        var contents = await dataLoader.LoadAsync([.. ids], cancellationToken: ct)!;
-
-        return ReplaceIdPage<T>(ImmutableArray.Create<T>([.. contents!]), ids!);
+        foreach (var item in page)
+        {
+            dataLoader.SetCacheEntry(item.Id, item);
+        }
+        return page;
     }
 
     public static Page<T> ReplaceIdPage<T>(this T[] items, Page<Guid> page)

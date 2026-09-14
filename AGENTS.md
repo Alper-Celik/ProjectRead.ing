@@ -191,7 +191,7 @@ public static partial class XxxQuery
         PagingArguments pg,
         CancellationToken ct
     ) => await db.Xxxs.Where(x => x.OwnerId == userId.Id)
-        .ProjectToDto().With(qc).ToPageWithDataLoaderAsync(pg, xxxById, ct);
+        .ProjectToDto().WithQueryContext(qc).ToPageWithDataLoaderAsync(pg, xxxById, ct);
 }
 
 [ObjectType<Xxx>]
