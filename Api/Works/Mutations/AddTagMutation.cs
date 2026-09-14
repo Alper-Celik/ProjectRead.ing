@@ -9,6 +9,8 @@ using Api.Auth.Utils;
 using Api.Database;
 using Api.Utils;
 using Api.Works.Queries;
+using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 using NodaTime;
 using Riok.Mapperly.Abstractions;
 
@@ -41,6 +43,26 @@ public record AddTagInput
     public required string[] TagNamespace { get; init; }
 
     public required string TagName { get; init; }
+
+    public class AddTagInputValidator : AbstractValidator<AddTagInput>
+    {
+        public AddTagInputValidator(PGContext db, ICurrentUserId userId)
+        {
+            RuleFor(t => t)
+                .MustAsync(
+                    async (input, ct) =>
+                        !await db.WorkTags.AnyAsync(
+                            existing =>
+                                existing.OwnerId == userId.Id
+                                && existing.TagNamespace == input.TagNamespace
+                                && existing.TagName == input.TagName,
+                            ct
+                        )
+                )
+                .WithMessage("A tag with the same namespace and name already exists")
+                .WithErrorCode(ErrorCodes.TAG_ALREADY_EXISTS);
+        }
+    }
 }
 
 [Mapper]

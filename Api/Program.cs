@@ -73,13 +73,12 @@ builder
         services.RemoveAll<INodeIdSerializer>();
         services.AddSingleton<INodeIdSerializer, GuidNodeSerializer>();
     })
-    // TODO: revisit the filter cost model. Weights are flattened to 1 to work around the
-    // default cost analyzer expanding the whole filter input graph * VariableMultiplier.
     .ModifyCostOptions(opt =>
     {
+        opt.Sorting.VariableMultiplier = 1;
         opt.Filtering.VariableMultiplier = 1;
-        opt.MaxFieldCost = 5_000;
-        opt.MaxTypeCost = 5_000;
+        opt.MaxFieldCost = 20_000;
+        opt.MaxTypeCost = 20_000;
     })
     .ModifyServerOptions(opt =>
     {

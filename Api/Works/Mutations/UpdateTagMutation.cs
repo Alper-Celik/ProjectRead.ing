@@ -77,6 +77,40 @@ public record UpdateTagInput : IBasicEntityMetadata
             RuleFor(w => w.Id).IdMustExist(db.WorkTags, userId.Id);
 
             RuleFor(w => w.RowVersion).RowVersionMustMatch(db.WorkTags);
+
+            RuleFor(w => w)
+                .MustAsync(
+                    async (input, ct) =>
+                    {
+                        var existing = await db
+                            .WorkTags.Where(t =>
+                                t.OwnerId == userId.Id && t.Id == input.Id
+                            )
+                            .Select(t => new { t.TagNamespace, t.TagName })
+                            .FirstOrDefaultAsync(ct);
+
+                        if (existing is null)
+                            return true;
+
+                        var tagNamespace = input.TagNamespace.HasValue
+                            ? input.TagNamespace.Value ?? []
+                            : existing.TagNamespace;
+                        var tagName = input.TagName.HasValue
+                            ? input.TagName.Value
+                            : existing.TagName;
+
+                        return !await db.WorkTags.AnyAsync(
+                            other =>
+                                other.OwnerId == userId.Id
+                                && other.Id != input.Id
+                                && other.TagNamespace == tagNamespace
+                                && other.TagName == tagName,
+                            ct
+                        );
+                    }
+                )
+                .WithMessage("A tag with the same namespace and name already exists")
+                .WithErrorCode(ErrorCodes.TAG_ALREADY_EXISTS);
         }
     }
 

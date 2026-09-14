@@ -286,5 +286,214 @@ public class WorksQueryTests : WorksTestBase
         await Assert.That(second.Errors).IsNull().Or.IsEmpty();
         await Assert.That(second.Data!.Nodes![0].Title).IsEqualTo("Beta");
     }
+
+    [Test]
+    public async Task TagWorks_ReturnsOnlyThatTagsWorks(CancellationToken ct)
+    {
+        var client = await AuthenticatedClient();
+        var (tagId, _) = await AddTag(client, tagName: "Fantasy");
+        var (otherTagId, _) = await AddTag(client, tagName: "SciFi");
+        await AddTag(client, tagName: "Unused");
+        await AddWork(client, title: "Tagged Fantasy", tagIds: [tagId]);
+        await AddWork(client, title: "Tagged SciFi", tagIds: [otherTagId]);
+
+        var result = await client.Query(q =>
+            q.Tags(
+                first: 10,
+                after: null,
+                last: null,
+                before: null,
+                where: null,
+                order: null,
+                selector: c =>
+                    c.Nodes(t => new
+                    {
+                        t.TagName,
+                        Works = t.Works(
+                            first: 10,
+                            after: null,
+                            last: null,
+                            before: null,
+                            where: null,
+                            order: null,
+                            selector: w => w.Nodes(x => new { x.Title })
+                        ),
+                    })
+            )
+        );
+
+        await Assert.That(result.Errors).IsNull().Or.IsEmpty();
+        var tags = result.Data!.ToDictionary(t => t.TagName);
+        await Assert.That(tags["Fantasy"].Works).HasSingleItem();
+        await Assert.That(tags["Fantasy"].Works![0].Title).IsEqualTo("Tagged Fantasy");
+        await Assert.That(tags["SciFi"].Works).HasSingleItem();
+        await Assert.That(tags["SciFi"].Works![0].Title).IsEqualTo("Tagged SciFi");
+        await Assert.That(tags["Unused"].Works).IsEmpty();
+    }
+
+    [Test]
+    public async Task TagWorks_CanBeFilteredAndSorted(CancellationToken ct)
+    {
+        var client = await AuthenticatedClient();
+        var (tagId, _) = await AddTag(client, tagName: "Fantasy");
+        var (otherTagId, _) = await AddTag(client, tagName: "SciFi");
+        await AddWork(client, title: "Zeta", tagIds: [tagId]);
+        await AddWork(client, title: "Alpha", tagIds: [tagId]);
+        await AddWork(client, title: "SciFi Only", tagIds: [otherTagId]);
+
+        var order = new[] { new WorkSortInput { Title = SortEnumType.Asc } };
+        var filter = new WorkFilterInput
+        {
+            Title = new StringOperationFilterInput { Contains = "a" },
+        };
+
+        var result = await client.Query(q =>
+            q.Tags(
+                first: 10,
+                after: null,
+                last: null,
+                before: null,
+                where: null,
+                order: null,
+                selector: c =>
+                    c.Nodes(t => new
+                    {
+                        t.TagName,
+                        Works = t.Works(
+                            first: 10,
+                            after: null,
+                            last: null,
+                            before: null,
+                            where: filter,
+                            order: order,
+                            selector: w => new
+                            {
+                                w.TotalCount,
+                                Nodes = w.Nodes(x => new { x.Title }),
+                            }
+                        ),
+                    })
+            )
+        );
+
+        await Assert.That(result.Errors).IsNull().Or.IsEmpty();
+        var tags = result.Data!.ToDictionary(t => t.TagName);
+        await Assert.That(tags["Fantasy"].Works!.TotalCount).IsEqualTo(2);
+        await Assert
+            .That(tags["Fantasy"].Works!.Nodes!.Select(n => n.Title))
+            .IsEquivalentTo(["Alpha", "Zeta"]);
+        await Assert.That(tags["SciFi"].Works!.TotalCount).IsEqualTo(0);
+        await Assert.That(tags["SciFi"].Works!.Nodes).IsEmpty();
+    }
+
+    [Test]
+    public async Task TagWorks_ArePaginated(CancellationToken ct)
+    {
+        var client = await AuthenticatedClient();
+        var (tagId, _) = await AddTag(client, tagName: "Fantasy");
+        await AddWork(client, title: "First", tagIds: [tagId]);
+        await AddWork(client, title: "Second", tagIds: [tagId]);
+
+        var order = new[] { new WorkSortInput { Title = SortEnumType.Asc } };
+
+        var result = await client.Query(q =>
+            q.Tags(
+                first: 1,
+                after: null,
+                last: null,
+                before: null,
+                where: null,
+                order: null,
+                selector: c =>
+                    c.Nodes(t => new
+                    {
+                        Works = t.Works(
+                            first: 1,
+                            after: null,
+                            last: null,
+                            before: null,
+                            where: null,
+                            order: order,
+                            selector: w => new
+                            {
+                                w.TotalCount,
+                                Nodes = w.Nodes(x => new { x.Title }),
+                            }
+                        ),
+                    })
+            )
+        );
+
+        await Assert.That(result.Errors).IsNull().Or.IsEmpty();
+        var page = result.Data!.Single().Works!;
+        await Assert.That(page.TotalCount).IsEqualTo(2);
+        await Assert.That(page.Nodes).HasSingleItem();
+        await Assert.That(page.Nodes![0].Title).IsEqualTo("First");
+    }
+
+    [Test]
+    public async Task WorkTags_ReturnsTagsForWork(CancellationToken ct)
+    {
+        var client = await AuthenticatedClient();
+        var (tagOne, _) = await AddTag(client, tagName: "Alpha");
+        var (tagTwo, _) = await AddTag(client, tagName: "Beta");
+        await AddWork(client, title: "Tagged", tagIds: [tagOne, tagTwo]);
+        await AddWork(client, title: "Untagged");
+
+        var result = await client.Query(q =>
+            q.Works(
+                first: 10,
+                after: null,
+                last: null,
+                before: null,
+                where: null,
+                order: null,
+                selector: c =>
+                    c.Nodes(w => new
+                    {
+                        w.Title,
+                        Tags = w.Tags(limit: null, selector: t => new { t.TagName }),
+                    })
+            )
+        );
+
+        await Assert.That(result.Errors).IsNull().Or.IsEmpty();
+        var works = result.Data!.ToDictionary(w => w.Title);
+        await Assert
+            .That(works["Tagged"].Tags!.Select(t => t.TagName))
+            .IsEquivalentTo(["Alpha", "Beta"]);
+        await Assert.That(works["Untagged"].Tags).IsEmpty();
+    }
+
+    [Test]
+    public async Task WorkTags_RespectsLimit(CancellationToken ct)
+    {
+        var client = await AuthenticatedClient();
+        var (tagOne, _) = await AddTag(client, tagName: "Alpha");
+        var (tagTwo, _) = await AddTag(client, tagName: "Beta");
+        var (tagThree, _) = await AddTag(client, tagName: "Gamma");
+        await AddWork(client, title: "Tagged", tagIds: [tagOne, tagTwo, tagThree]);
+
+        var result = await client.Query(q =>
+            q.Works(
+                first: 10,
+                after: null,
+                last: null,
+                before: null,
+                where: null,
+                order: null,
+                selector: c =>
+                    c.Nodes(w => new
+                    {
+                        Tags = w.Tags(limit: 2, selector: t => new { t.TagName }),
+                    })
+            )
+        );
+
+        await Assert.That(result.Errors).IsNull().Or.IsEmpty();
+        var work = result.Data!.Single();
+        await Assert.That(work.Tags).IsNotNull();
+        await Assert.That(work.Tags!.Length).IsEqualTo(2);
+    }
 }
 // Mostly Ai Generated - End

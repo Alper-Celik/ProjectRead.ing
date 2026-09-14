@@ -218,6 +218,27 @@ public class WorksMutationTests : WorksTestBase
     }
 
     [Test]
+    public async Task AddTag_WithDuplicatePair_Fails(CancellationToken ct)
+    {
+        var client = await AuthenticatedClient();
+        await AddTag(client, tagName: "Sci-Fi", tagNamespace: ["genre", "sub"]);
+
+        var result = await client.Mutation(
+            new
+            {
+                input = new AddTagInput
+                {
+                    TagName = "Sci-Fi",
+                    TagNamespace = ["genre", "sub"],
+                },
+            },
+            static (i, m) => m.AddTagMutation(i.input, p => p.Tag(t => t.Id))
+        );
+
+        await AssertErrorCode(result, ErrorCodes.TAG_ALREADY_EXISTS);
+    }
+
+    [Test]
     public async Task UpdateTag_UpdatesProvidedFields(CancellationToken ct)
     {
         var client = await AuthenticatedClient();
@@ -278,6 +299,62 @@ public class WorksMutationTests : WorksTestBase
         await Assert
             .That(result.Data.MetadataUpdatedAt)
             .IsGreaterThan(beforeNode.MetadataUpdatedAt);
+    }
+
+    [Test]
+    public async Task UpdateTag_ToExistingPair_Fails(CancellationToken ct)
+    {
+        var client = await AuthenticatedClient();
+        await AddTag(client, tagName: "Existing", tagNamespace: ["genre"]);
+        var (id, rowVersion) = await AddTag(
+            client,
+            tagName: "Other",
+            tagNamespace: ["genre"]
+        );
+
+        var result = await client.Mutation(
+            new
+            {
+                input = new UpdateTagInput
+                {
+                    Id = id,
+                    RowVersion = rowVersion,
+                    TagName = "Existing",
+                    TagNamespace = ["genre"],
+                },
+            },
+            static (i, m) => m.UpdateTagMutation(i.input, p => p.Tag(t => t.TagName))
+        );
+
+        await AssertErrorCode(result, ErrorCodes.TAG_ALREADY_EXISTS);
+    }
+
+    [Test]
+    public async Task UpdateTag_WithUnchangedPair_Succeeds(CancellationToken ct)
+    {
+        var client = await AuthenticatedClient();
+        var (id, rowVersion) = await AddTag(
+            client,
+            tagName: "Same",
+            tagNamespace: ["genre"]
+        );
+
+        var result = await client.Mutation(
+            new
+            {
+                input = new UpdateTagInput
+                {
+                    Id = id,
+                    RowVersion = rowVersion,
+                    TagName = "Same",
+                    TagNamespace = ["genre"],
+                },
+            },
+            static (i, m) => m.UpdateTagMutation(i.input, p => p.Tag(t => t.TagName))
+        );
+
+        await Assert.That(result.Errors).IsNull().Or.IsEmpty();
+        await Assert.That(result.Data).IsEqualTo("Same");
     }
 
     [Test]

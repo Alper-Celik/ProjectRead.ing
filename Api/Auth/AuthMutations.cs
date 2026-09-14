@@ -125,9 +125,7 @@ public static class AuthMutationsUtils
         string ClientName = "unknown"
     );
 
-    public class RegisterInputValidator
-        : AbstractValidator<RegisterInput>,
-            IRequiresOwnScopeValidator
+    public class RegisterInputValidator : AbstractValidator<RegisterInput>
     {
         public RegisterInputValidator(PGContext db, IEFTransactionDIAccessorService tx)
         {
