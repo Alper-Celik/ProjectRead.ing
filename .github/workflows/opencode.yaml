@@ -89,7 +89,7 @@ jobs:
           share: true
           use_github_token: true
           mentions: "/oc_review,/opencode_review"
-          model: opencode-go/qwen3.8-flash
+          model: opencode-go/deepseek-v4.1-flash
           prompt: |
             Review the code and post inline review comments on specific lines
             using the GitHub MCP tools. Only comment on lines with actual issues.
@@ -108,8 +108,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           use_github_token: true
-          model: opencode-go/qwen3.8-flash
+          model: opencode-go/deepseek-v4.1-flash
           share: true
 
       - run: sleep 10
         if: always()
+
+      - cancel: services
