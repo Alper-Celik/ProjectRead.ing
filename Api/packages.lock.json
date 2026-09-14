@@ -137,6 +137,16 @@
           "NodaTime": "3.2.2"
         }
       },
+      "LinqKit.Microsoft.EntityFrameworkCore": {
+        "type": "Direct",
+        "requested": "[10.0.11, )",
+        "resolved": "10.0.11",
+        "contentHash": "NQS+uQ7mmUAMU04CP/WRQVcWIGt/WAv6qBHSZJiqDPsTm1XesCEDfSB90Q/2o7UdA3z2dozjxaUALWbVyQcSUA==",
+        "dependencies": {
+          "LinqKit.Core": "1.2.11",
+          "Microsoft.EntityFrameworkCore": "10.0.0"
+        }
+      },
       "Microsoft.AspNetCore.OpenApi": {
         "type": "Direct",
         "requested": "[10.0.11, )",
@@ -663,6 +673,11 @@
         "type": "Transitive",
         "resolved": "1.0.22",
         "contentHash": "KPD9SloJFclrsjnhABu7dzWrcyYkwPbvx5l1gRSPAX/0n+OBtSiVCKtGFv4n+ecWUHU0tCG9LSSwoZZx673zBQ=="
+      },
+      "LinqKit.Core": {
+        "type": "Transitive",
+        "resolved": "1.2.11",
+        "contentHash": "jQXu7G9Ik6BDcS5506RV1CI184pG5eHwvqzrB5zEivciW7KiZ9iHM8ZTyu5o/TGt55woagJGUVsJYw4aBjRfEQ=="
       },
       "Microsoft.Build.Framework": {
         "type": "Transitive",

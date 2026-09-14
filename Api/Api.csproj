@@ -35,6 +35,7 @@ SPDX-License-Identifier: Apache-2.0
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
     <PackageReference Include="HotChocolate.Types.NodaTime" Version="16.7.0-p.5" />
+    <PackageReference Include="LinqKit.Microsoft.EntityFrameworkCore" Version="10.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

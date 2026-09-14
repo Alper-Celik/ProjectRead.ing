@@ -2,7 +2,9 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 using System.Collections.Immutable;
+using System.Linq.Expressions;
 using GreenDonut.Data;
+using LinqKit;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Utils;
@@ -41,21 +43,20 @@ public static class GeneralUtils
         return page;
     }
 
-    public static Page<T> ReplaceIdPage<T>(this T[] items, Page<Guid> page)
-        where T : IEntityMetadata => ImmutableArray.Create(items).ReplaceIdPage(page);
-
-    public static Page<T> ReplaceIdPage<T>(this ImmutableArray<T> items, Page<Guid> page)
-        where T : IEntityMetadata
+    public static async Task<IDictionary<Guid, Guid[]>> GetManyToManyIds<T>(
+        this IQueryable<T> table,
+        IReadOnlyList<Guid> tableIds,
+        Guid userId,
+        Expression<Func<T, IEnumerable<Guid>>> manyIdSelector,
+        CancellationToken ct
+    )
+        where T : IDbEntityMetadata
     {
-        var pageEntries = page.Entries.ToDictionary(p => p.Item);
-
-        return Page<T>.Create(
-            items: items,
-            hasNextPage: page.HasNextPage,
-            hasPreviousPage: page.HasPreviousPage,
-            createCursor: (T t) => page.CreateCursor(pageEntries[t.Id]),
-            totalCount: page.TotalCount
-        );
+        return await table
+            .Where(t => t.OwnerId == userId)
+            .Where(t => tableIds.Contains(t.Id))
+            .Select(t => new { t.Id, ManyIds = manyIdSelector.Invoke(t) })
+            .ToDictionaryAsync(ids => ids.Id, ids => ids.ManyIds.ToArray(), ct);
     }
 
     public static string NormalizeEmail(this string email) =>

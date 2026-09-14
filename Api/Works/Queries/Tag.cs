@@ -10,6 +10,7 @@ using GreenDonut.Data;
 using HotChocolate.Types.Pagination;
 using Microsoft.EntityFrameworkCore;
 using Riok.Mapperly.Abstractions;
+using static Api.Works.Queries.WorkDataLoaders;
 
 namespace Api.Works.Queries;
 
@@ -40,6 +41,28 @@ public static partial class TagQuery
 public static partial class TagNode
 {
     public interface ITagByIdDataLoader : IBatchDataLoader<Guid, Tag>;
+
+    [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkRead)]
+    [UseFiltering]
+    [UseSorting]
+    [GraphQLName("Works")]
+    public static async Task<PageConnection<Work>> GetWorksByTag(
+        [Parent] Tag tag,
+        [Service] PGContext db,
+        [Service] ICurrentUserId userId,
+        [Service] IWorkByIdDataLoader workById,
+        QueryContext<Work> qc,
+        PagingArguments pagingArguments,
+        CancellationToken ct
+    )
+    {
+        return await db
+            .Works.Where(w => w.OwnerId == userId.Id)
+            .Where(w => w.WorkTags.Select(t => t.Id).Contains(tag.Id))
+            .ProjectToDto()
+            .WithQueryContext(qc)
+            .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
+    }
 
     [GraphQLIgnore]
     [DataLoader<ITagByIdDataLoader>]

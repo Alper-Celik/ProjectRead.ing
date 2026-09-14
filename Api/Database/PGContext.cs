@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.Reflection;
+using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Npgsql;
@@ -33,7 +34,8 @@ public partial class PGContext(DbContextOptions options, IConfiguration? config 
             .UseNpgsql(
                 config?.GetConnectionString("PG") ?? "",
                 nopts => nopts.SetPostgresVersion(18, 0).UseNodaTime()
-            );
+            )
+            .WithExpressionExpanding();
 }
 
 public class SchemaModelCacheKeyFactory : IModelCacheKeyFactory

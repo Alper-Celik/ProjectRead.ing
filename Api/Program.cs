@@ -34,6 +34,7 @@ builder.Services.AddHttpLogging(opt =>
 {
     if (builder.Environment.IsDevelopment())
     {
+        opt.CombineLogs = true;
         opt.LoggingFields = Microsoft.AspNetCore.HttpLogging.HttpLoggingFields.All;
     }
 });
@@ -76,14 +77,9 @@ builder
     // default cost analyzer expanding the whole filter input graph * VariableMultiplier.
     .ModifyCostOptions(opt =>
     {
-        opt.DefaultResolverCost = 1;
-        opt.Filtering.DefaultFilterArgumentCost = 1;
-        opt.Filtering.DefaultFilterOperationCost = 1;
-        opt.Filtering.DefaultExpensiveFilterOperationCost = 1;
         opt.Filtering.VariableMultiplier = 1;
-        opt.Sorting.DefaultSortArgumentCost = 1;
-        opt.Sorting.DefaultSortOperationCost = 1;
-        opt.Sorting.VariableMultiplier = 1;
+        opt.MaxFieldCost = 5_000;
+        opt.MaxTypeCost = 5_000;
     })
     .ModifyServerOptions(opt =>
     {

@@ -53,7 +53,27 @@ public static partial class WorkNode
     )
     {
         var ids = await authorIdLoader.LoadAsync(work.Id, ct);
-        return (await authorLoader.LoadAsync(ids!, ct))!;
+        ids ??= [];
+        return (await authorLoader.LoadAsync(ids, ct))!;
+    }
+
+    [PermissionCheckAuthorize(UserPermissionBits.TagRead | UserPermissionBits.WorkRead)]
+    [GraphQLName("Tags")]
+    public static async Task<IReadOnlyList<Tag>> GetTagsByWorkAsync(
+        [Parent] Work work,
+        ITagIdsByWorkIdDataLoader tagIdsByWorkLoader,
+        TagNode.ITagByIdDataLoader tagByIdLoader,
+        int? limit,
+        CancellationToken ct
+    )
+    {
+        var ids = await tagIdsByWorkLoader.LoadAsync(work.Id, ct);
+        if (limit is not null)
+        {
+            ids = [.. ids?.Take((int)limit) ?? []];
+        }
+        ids ??= [];
+        return (await tagByIdLoader.LoadAsync(ids, ct))!;
     }
 
     [PermissionCheckAuthorize(UserPermissionBits.WorkRead)]
@@ -67,6 +87,23 @@ public static partial class WorkNode
 
 public static class WorkDataLoaders
 {
+    public interface ITagIdsByWorkIdDataLoader : IBatchDataLoader<Guid, Guid[]>;
+
+    [GraphQLIgnore]
+    [DataLoader<ITagIdsByWorkIdDataLoader>]
+    public static async Task<IDictionary<Guid, Guid[]>> GetTagIdsByWorkIdAsync(
+        IReadOnlyList<Guid> ids,
+        [Service] PGContext db,
+        [Service] ICurrentUserId userId,
+        CancellationToken ct
+    ) =>
+        await db.Works.GetManyToManyIds(
+            ids,
+            (Guid)userId.Id!,
+            w => w.WorkTag_Works.Select(wt => wt.WorkTagId),
+            ct
+        );
+
     public interface IAuthorIdByWorkIdDataLoader : IBatchDataLoader<Guid, Guid[]>;
 
     [GraphQLIgnore]
@@ -76,18 +113,13 @@ public static class WorkDataLoaders
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
         CancellationToken ct
-    )
-    {
-        return await db
-            .Works.Where(w => w.OwnerId == userId.Id)
-            .Where(w => ids.Contains(w.Id))
-            .Select(w => new
-            {
-                wId = w.Id,
-                aIds = w.Work_Authors.Select(wa => wa.AuthorId),
-            })
-            .ToDictionaryAsync(t => t.wId, t => t.aIds.ToArray(), ct);
-    }
+    ) =>
+        await db.Works.GetManyToManyIds(
+            ids,
+            (Guid)userId.Id!,
+            w => w.Work_Authors.Select(wa => wa.AuthorId),
+            ct
+        );
 
     public interface IWorkByIdDataLoader : IBatchDataLoader<Guid, Work>;
 
