@@ -36,7 +36,7 @@ public static partial class UpdateTagMutations
 
         UpdateTagInput.ApplyToTag(tag, input);
         tag.RowVersion += 1;
-        tag.MetadataAddedAt = Now();
+        tag.MetadataUpdatedAt = Now();
 
         await db.SaveChangesAsync(cancellationToken: ct);
 
@@ -83,7 +83,7 @@ public record UpdateTagInput : IBasicEntityMetadata
     public static void ApplyToTag(Models.WorkTag tag, UpdateTagInput input)
     {
         if (input.TagNamespace.HasValue)
-            tag.TagNamespace = input.TagNamespace.Value;
+            tag.TagNamespace = input.TagNamespace.Value ?? [];
 
         if (input.TagName.HasValue)
             tag.TagName = input.TagName.Value;

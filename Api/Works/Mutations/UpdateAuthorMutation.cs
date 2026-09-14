@@ -36,7 +36,7 @@ public static partial class UpdateAuthorMutations
 
         UpdateAuthorInput.ApplyToAuthor(author, input);
         author.RowVersion += 1;
-        author.MetadataAddedAt = Now();
+        author.MetadataUpdatedAt = Now();
 
         await db.SaveChangesAsync(cancellationToken: ct);
 

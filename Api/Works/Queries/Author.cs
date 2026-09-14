@@ -60,7 +60,7 @@ public static partial class AuthorNode
             .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
     }
 
-    [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkRead)]
+    [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.AuthorRead)]
     [GraphQLIgnore]
     public static async Task<Author?> GetByIdAsync(
         IAuthorByIdDataLoader authorById,

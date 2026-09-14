@@ -56,7 +56,7 @@ public static partial class WorkNode
         return (await authorLoader.LoadAsync(ids!, ct))!;
     }
 
-    [PermissionCheckAuthorize(UserPermissionBits.AuthorRead)]
+    [PermissionCheckAuthorize(UserPermissionBits.WorkRead)]
     [GraphQLIgnore]
     public static async Task<Work?> GetByIdAsync(
         [Service] IWorkByIdDataLoader workById,
