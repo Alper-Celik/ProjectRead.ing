@@ -59,7 +59,7 @@ IdPostfixes enum: `User=0, Work=1, Author=2, WorkTag=3`
     All = ~0,
     WorkRead = 1L << 0,     WorkWrite = 1L << 1,
     AuthorRead = 1L << 2,   AuthorWrite = 1L << 3,
-    WorkTagRead = 1L << 4,  WorkTagWrite = 1L << 5,
+    TagRead = 1L << 4,  TagWrite = 1L << 5,
     UserRead = 1L << 6,     UserWrite = 1L << 7,
 }
 ```
@@ -135,7 +135,7 @@ public static partial class UpdateXxxMutations
 
         UpdateXxxInput.ApplyToXxx(entity, input);
         entity.RowVersion += 1;
-        entity.MetadataAddedAt = Now();
+        entity.MetadataUpdatedAt = Now();
 
         await db.SaveChangesAsync(cancellationToken: ct);
         await tx.CommitAsync(ct);

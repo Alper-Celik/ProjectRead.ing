@@ -182,7 +182,7 @@ public class WorksQueryTests : WorksTestBase
     public async Task Node_WithUnknownId_ReturnsInvalidIdError(CancellationToken ct)
     {
         var client = await AuthenticatedClient();
-        var unknownId = Guid.CreateVersion7();
+        var unknownId = Guid.CreateVersion7().WithPostfix(0xFF);
 
         var result = await client.Query(q => q.Node(unknownId, n => n.Id));
 
