@@ -23,8 +23,8 @@ public static partial class UpdateWorkMutations
     public static async Task<UpdateWorkPayload> UpdateWorkMutation(
         [Service] PGContext db,
         [Service] IEFTransactionDIAccessorService txGetter,
-        CancellationToken ct,
-        UpdateWorkInput input
+        UpdateWorkInput input,
+        CancellationToken ct
     )
     {
         var tx = await txGetter.BeginOrGetTransactionAsync();
@@ -35,11 +35,11 @@ public static partial class UpdateWorkMutations
 
         UpdateWorkInput.ApplyToWork(work, input);
         work.RowVersion += 1;
-        work.MetadataAddedAt = Now();
+        work.MetadataUpdatedAt = Now();
 
         await db.SaveChangesAsync(cancellationToken: ct);
 
-        await tx.CommitAsync();
+        await tx.CommitAsync(ct);
         return new UpdateWorkPayload(WorkMapper.ToDto(work));
     }
 }
@@ -53,13 +53,12 @@ public record UpdateWorkInput : IBasicEntityMetadata
     public Guid Id { get; init; }
     public int RowVersion { get; init; }
 
-    [DefaultValue("")]
-    public required Optional<string> Title { get; init; }
+    public Optional<string> Title { get; init; }
     public Optional<string?> Description { get; init; }
 
     public Optional<Instant?> WorkPublishedAt { get; init; }
     public Optional<Instant?> WorkUpdatedAt { get; init; }
-    public Optional<List<Queries.Work.WorkIdentifier>?> WorkIdentifiers { get; init; }
+    public Optional<List<Queries.WorkIdentifier>?> WorkIdentifiers { get; init; }
     public required Optional<List<Guid>?> TagIds { get; init; }
     public required Optional<List<Guid>?> AuthorIds { get; init; }
 
@@ -71,14 +70,7 @@ public record UpdateWorkInput : IBasicEntityMetadata
             IEFTransactionDIAccessorService tx
         )
         {
-            RuleFor(w => w)
-                .MustAsync(
-                    async (_, ct) =>
-                    {
-                        await tx.BeginOrGetTransactionAsync();
-                        return true;
-                    }
-                );
+            RuleFor(w => w).BeginTransaction(tx);
 
             RuleFor(w => w.Id).IdMustExist(db.Works, userId.Id);
 

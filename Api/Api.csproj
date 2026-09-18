@@ -23,16 +23,19 @@ SPDX-License-Identifier: Apache-2.0
     <PackageReference Include="FluentValidation" Version="12.1.1" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" Version="12.1.1" />
     <PackageReference Include="Geralt" Version="4.4.0" />
-    <PackageReference Include="GreenDonut.Data.EntityFramework" Version="16.6.4" />
-    <PackageReference Include="HotChocolate.AspNetCore" Version="16.6.4" />
-    <PackageReference Include="HotChocolate.AspNetCore.Authorization" Version="16.6.4" />
-    <PackageReference Include="HotChocolate.AspNetCore.CommandLine" Version="16.6.4" />
-    <PackageReference Include="HotChocolate.Data" Version="16.6.4" />
-    <PackageReference Include="HotChocolate.Types.Analyzers" Version="16.6.4">
+    <PackageReference Include="GreenDonut" Version="16.7.0-p.5" />
+    <PackageReference Include="GreenDonut.Abstractions" Version="16.7.0-p.5" />
+    <PackageReference Include="GreenDonut.Data.EntityFramework" Version="16.7.0-p.5" />
+    <PackageReference Include="HotChocolate.AspNetCore" Version="16.7.0-p.5" />
+    <PackageReference Include="HotChocolate.AspNetCore.Authorization" Version="16.7.0-p.5" />
+    <PackageReference Include="HotChocolate.AspNetCore.CommandLine" Version="16.7.0-p.5" />
+    <PackageReference Include="HotChocolate.Data" Version="16.7.0-p.5" />
+    <PackageReference Include="HotChocolate.Types.Analyzers" Version="16.7.0-p.5">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
       <PrivateAssets>all</PrivateAssets>
     </PackageReference>
-    <PackageReference Include="HotChocolate.Types.NodaTime" Version="16.6.4" />
+    <PackageReference Include="HotChocolate.Types.NodaTime" Version="16.7.0-p.5" />
+    <PackageReference Include="LinqKit.Microsoft.EntityFrameworkCore" Version="10.0.11" />
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.11" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.11">
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

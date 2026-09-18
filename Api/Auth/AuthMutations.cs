@@ -125,9 +125,7 @@ public static class AuthMutationsUtils
         string ClientName = "unknown"
     );
 
-    public class RegisterInputValidator
-        : AbstractValidator<RegisterInput>,
-            IRequiresOwnScopeValidator
+    public class RegisterInputValidator : AbstractValidator<RegisterInput>
     {
         public RegisterInputValidator(PGContext db, IEFTransactionDIAccessorService tx)
         {
@@ -148,7 +146,7 @@ public static class AuthMutationsUtils
                 .MustAsync(
                     async (e, ct) =>
                         !await db
-                            .Users.Where(u => u.Email.NormalizeEmail() == e)
+                            .Users.Where(u => u.Email == e.NormalizeEmail())
                             .AnyAsync(ct)
                 )
                 .WithMessage("Email is already used");
