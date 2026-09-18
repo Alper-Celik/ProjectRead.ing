@@ -8,6 +8,8 @@ public enum IdPostfixes : byte
     Work = 1,
     Author = 2,
     WorkTag = 3,
+    FileRecord = 4,
+    FileProviderBackend = 5,
 }
 
 public static class GuidExtensions
