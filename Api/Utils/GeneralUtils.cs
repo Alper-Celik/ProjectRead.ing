@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 using System.Linq.Expressions;
+using System.Text.Json;
 using GreenDonut.Data;
 using LinqKit;
 using Microsoft.EntityFrameworkCore;
@@ -63,4 +64,20 @@ public static class GeneralUtils
 
     public static NodaTime.Instant Now() =>
         NodaTime.SystemClock.Instance.GetCurrentInstant();
+
+    public static T? TryDeserialize<T>(
+        this JsonDocument doc,
+        JsonSerializerOptions? opt = null
+    )
+        where T : class
+    {
+        try
+        {
+            return doc.Deserialize<T>(opt);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 }

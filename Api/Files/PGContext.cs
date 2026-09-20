@@ -12,5 +12,5 @@ public partial class PGContext : DbContext
 {
     public DbSet<FileRecord> FileRecords { get; set; }
 
-    public DbSet<FileProviderBackend> FileProviderBackends { get; set; }
+    public DbSet<FileProviderBackendConfig> FileProviderBackendConfigs { get; set; }
 }

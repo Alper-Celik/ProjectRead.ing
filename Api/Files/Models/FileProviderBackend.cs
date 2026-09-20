@@ -8,7 +8,7 @@ using Api.Files.FileProviders;
 
 namespace Api.Files.Models;
 
-public class FileProviderBackend : IEntityMetadata
+public class FileProviderBackendConfig : IEntityMetadata
 {
     public static byte IdPostfix => (byte)IdPostfixes.FileRecord;
 
@@ -20,6 +20,8 @@ public class FileProviderBackend : IEntityMetadata
 
     public Guid? OwnerId { get; set; }
     public bool InstanceWide { get; set; }
+    public bool FallbackDefault { get; set; }
+    public FileKind[] DefaultFor { get; set; } = null!;
 
     public required FileProviderId ProviderId { get; set; }
     public JsonDocument? ProviderConfig { get; set; }

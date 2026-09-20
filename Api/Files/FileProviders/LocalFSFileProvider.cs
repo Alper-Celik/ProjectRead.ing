@@ -1,10 +1,20 @@
+// SPDX-FileCopyrightText: 2026 Alper Çelik <alper@alper-celik.dev>
+//
+// SPDX-License-Identifier: AGPL-3.0-or-later
+
 namespace Api.Files.FileProviders;
 
-public class LocalFSFileProvider(string basePath) : IFileProvider
+public record LocalFSFileProviderConfig(string? BasePath);
+
+public class LocalFSFileProvider(LocalFSFileProviderConfig config) : IFileProvider
 {
     public async Task<Stream?> GetFileAsync(Guid ownerId, Guid id, CancellationToken ct)
     {
-        var path = System.IO.Path.Join(basePath, ownerId.ToString(), id.ToString());
+        var path = System.IO.Path.Join(
+            config.BasePath,
+            ownerId.ToString(),
+            id.ToString()
+        );
 
         // in fuse or network filesystems checking and opening file might be blocking non trivial amount of time
         return await Task.Run(
@@ -20,7 +30,7 @@ public class LocalFSFileProvider(string basePath) : IFileProvider
         CancellationToken ct
     )
     {
-        var dir = System.IO.Path.Join(basePath, ownerId.ToString());
+        var dir = System.IO.Path.Join(config.BasePath, ownerId.ToString());
         var path = System.IO.Path.Join(dir, id.ToString());
         using var handle = await Task.Run(
             () =>

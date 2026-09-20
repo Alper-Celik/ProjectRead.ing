@@ -24,8 +24,8 @@ public class FileRecord : IEntityMetadata
 
     public FileKind FileKind { get; set; }
 
-    [ForeignKey(nameof(FileProviderBackend))]
-    public required Guid FileProviderBackendId { get; set; }
+    [ForeignKey(nameof(FileProviderBackendConfig))]
+    public required Guid FileProviderBackendConfigId { get; set; }
 
     [MaxLength(1000)]
     public string? OriginalFileName { get; set; }
@@ -33,5 +33,5 @@ public class FileRecord : IEntityMetadata
     public long SizeBytes { get; set; }
 
     //Navigation properties
-    public FileProviderBackend FileProviderBackend { get; set; } = null!;
+    public FileProviderBackendConfig FileProviderBackendConfig { get; set; } = null!;
 }
