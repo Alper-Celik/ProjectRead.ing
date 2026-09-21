@@ -31,6 +31,7 @@ public class FileRecord : IEntityMetadata
     public string? OriginalFileName { get; set; }
     public required string ContentType { get; set; }
     public long SizeBytes { get; set; }
+    public required byte[] SHA256 { get; set; }
 
     //Navigation properties
     public FileProviderBackendConfig FileProviderBackendConfig { get; set; } = null!;

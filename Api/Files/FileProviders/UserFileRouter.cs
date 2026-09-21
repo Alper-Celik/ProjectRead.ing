@@ -8,11 +8,11 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Api.Files.FileProviders;
 
-public class UserRoutedFileProvider(
+public class UserFileRouter(
     IServiceProvider services,
     PGContext db,
     FileProviderFactory fileProviderFactory
-) : IFileProvider
+)
 {
     public async Task<Guid> GetUsersPrefferedStorage(Guid userId, FileKind fileKind)
     {
@@ -33,7 +33,8 @@ public class UserRoutedFileProvider(
         Guid userId,
         FileKind fileKind,
         string contentType,
-        string originalFileName
+        string originalFileName,
+        byte[] sha256Hash
     )
     {
         Guid providerBackendConfigId = await GetUsersPrefferedStorage(userId, fileKind);
@@ -48,6 +49,7 @@ public class UserRoutedFileProvider(
             FileKind = fileKind,
             ContentType = contentType,
             OriginalFileName = originalFileName,
+            SHA256 = sha256Hash,
             FileProviderBackendConfigId = providerBackendConfigId,
         };
         await db.FileRecords.AddAsync(fileRecord);
@@ -109,6 +111,8 @@ public class UserRoutedFileProvider(
                 fr.FileProviderBackendConfig.ProviderId,
                 fr.FileProviderBackendConfig.ProviderConfig,
                 fr.FileProviderBackendConfig.EncryptedSecrets,
+
+                fr.SHA256,
             })
             .FirstOrDefaultAsync(ct);
 
@@ -124,6 +128,6 @@ public class UserRoutedFileProvider(
                 fr.EncryptedSecrets
             ) ?? throw new NullReferenceException();
 
-        await fileProvider.SetFileAsync(ownerId, id, stream, ct);
+        await fileProvider.SetFileAsync(ownerId, id, stream, fr.SHA256, ct);
     }
 }

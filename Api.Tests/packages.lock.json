@@ -825,6 +825,11 @@
         "resolved": "8.0.0",
         "contentHash": "ne1843evDugl0md7Fjzy6QjJrzsjh46ZKbhf8GwBXb5f/gw97J4bxMs0NQKifDuThh/f0bZ0e62NPl1jzTuRqA=="
       },
+      "System.Reactive": {
+        "type": "Transitive",
+        "resolved": "7.0.0",
+        "contentHash": "VYaSP2Kt+45GFnr3q7c/b4awT48VvueOJV4jPjdUXi5MxC9mSUy+HkJYtm8rGZ6fC3tNHG9gBu/YwNAR/FYqhg=="
+      },
       "Tirion.FairyBread": {
         "type": "Transitive",
         "resolved": "13.2.0",
@@ -920,6 +925,7 @@
           "Npgsql.NodaTime": "[10.0.3, )",
           "Scalar.AspNetCore": "[2.17.3, )",
           "SharpGrip.FluentValidation.AutoValidation.Endpoints": "[2.0.0, )",
+          "System.Reactive": "[7.0.0, )",
           "Tirion.FairyBread": "[13.2.0, )"
         }
       }

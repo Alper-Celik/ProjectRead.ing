@@ -10,12 +10,12 @@ public interface IFileProvider
 {
     public Task<Stream?> GetFileAsync(Guid ownerId, Guid id, CancellationToken ct);
 
-    public Task<Guid> CreateFileAsync(
+    public Task<bool> SetFileAsync(
         Guid ownerId,
-        FileKind fileKind,
-        string contentType,
-        string originalFileName
+        Guid id,
+        Stream stream,
+        byte[] sha256Hash,
+        long sizeBytes,
+        CancellationToken ct
     );
-
-    public Task SetFileAsync(Guid ownerId, Guid id, Stream stream, CancellationToken ct);
 }
