@@ -33,7 +33,7 @@ public static partial class AddFileRecordWithFileMutations
             ownerId,
             input.FileKind,
             input.ContentType,
-            input.OriginalFileName ?? file.Name,
+            input.OriginalFileName,
             input.SizeBytes,
             Convert.FromHexString(input.Sha256),
             ct

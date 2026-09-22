@@ -37,13 +37,14 @@ public class LocalFSFileProvider(LocalFSFileProviderConfig config) : IFileProvid
     )
     {
         var tempDir = System.IO.Path.Join(config.BasePath, "uploading");
-        var tmpPath = System.IO.Path.Join(tempDir, Random.Shared.GetHexString(10, true));
+        var tmpPath = System.IO.Path.Join(
+            tempDir,
+            Random.Shared.GetHexString(128 / 4, true)
+        );
         var storageDir = System.IO.Path.Join(config.BasePath, ownerId.ToString());
         var storagePath = System.IO.Path.Join(storageDir, id.ToString());
         Directory.CreateDirectory(tempDir);
         Directory.CreateDirectory(storageDir);
-        if (File.Exists(storagePath))
-            return false;
 
         using var freeTempFile = Disposable.Create(() => File.Delete(tmpPath));
         using var handle = new FileStream(
@@ -98,7 +99,7 @@ public class LocalFSFileProvider(LocalFSFileProviderConfig config) : IFileProvid
         handle.Close();
         try
         {
-            File.Move(tmpPath, storagePath);
+            File.Move(tmpPath, storagePath, overwrite: true);
         }
         catch (IOException)
         {

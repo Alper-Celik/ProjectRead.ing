@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+using System.Linq;
 using System.Text.Json;
 using Api.Database;
 using Api.Files.Endpoints;
@@ -55,7 +56,7 @@ public class Setup
                 ProviderId = FileProviderId.LocalFsProvider,
                 ProviderConfig = JsonSerializer.SerializeToDocument(
                     new LocalFSFileProviderConfig(
-                        $"./BlobStorage{config["PR_TestPrefix"] ?? ""}"
+                        $"./BlobStorage{(config["PR_TestPrefix"] is { } prefix ? $"_{prefix}" : "")}"
                     )
                 ),
             };

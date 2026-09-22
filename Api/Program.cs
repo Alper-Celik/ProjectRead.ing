@@ -15,7 +15,6 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using NodaTime;
-using Scalar.AspNetCore;
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 [assembly: DataLoaderModule("ProjectReadingDataLoaders")]
@@ -23,6 +22,12 @@ using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 [assembly: System.Runtime.Versioning.SupportedOSPlatform("linux")]
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.WebHost.ConfigureKestrel(opt =>
+{
+    opt.UseSystemd();
+    opt.Limits.MaxRequestBodySize = 5L * 1024 * 1024 * 1024;
+});
 
 builder.Services.Configure<JsonOptions>(options =>
 {
@@ -40,7 +45,6 @@ builder.Services.AddHttpLogging(opt =>
     }
 });
 
-builder.Services.AddOpenApi();
 builder.Services.AddProjectReadingDataLoaders();
 builder
     .Services.AddGraphQLServer()
@@ -124,9 +128,6 @@ app.UseAuthorization();
 
 if (app.Environment.IsDevelopment() && app.Configuration["GRAPHQL_EXPORT"] != "1")
 {
-    app.MapOpenApi();
-    app.MapScalarApiReference();
-
     if (!app.Configuration.GetSection("IsTest").Get<bool>())
     {
         await using var scope = app.Services.CreateAsyncScope();
@@ -136,16 +137,17 @@ if (app.Environment.IsDevelopment() && app.Configuration["GRAPHQL_EXPORT"] != "1
     }
 }
 
-if (app.Configuration.GetSection("IsTest").Get<bool>())
+if (app.Configuration["GRAPHQL_EXPORT"] != "1")
 {
+    await using var scope = app.Services.CreateAsyncScope();
+    var db = scope.ServiceProvider.GetService<PGContext>()!;
+    if (app.Configuration.GetSection("IsTest").Get<bool>())
     {
-        await using var scope = app.Services.CreateAsyncScope();
-        var db = scope.ServiceProvider.GetService<PGContext>()!;
         RelationalDatabaseCreator databaseCreator = (RelationalDatabaseCreator)
             db.Database.GetService<IDatabaseCreator>();
         await databaseCreator.CreateTablesAsync();
-        await Api.Files.Setup.SeedDb(db, app.Configuration);
     }
+    await Api.Files.Setup.SeedDb(db, app.Configuration);
 }
 
 app.UseStaticFiles();

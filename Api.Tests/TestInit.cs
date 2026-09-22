@@ -102,11 +102,20 @@ public abstract class TestInit : WebApplicationTest<MyWebApplicationFactory, Pro
 
     public async ValueTask DisposeAsync()
     {
-        GC.SuppressFinalize(this);
-
         {
             await using var scope = Factory.Services.CreateAsyncScope();
             await using var dbConn = scope.ServiceProvider.GetService<PGContext>()!;
+
+            var tempPath = (
+                await dbConn.FileProviderBackendConfigs.FirstAsync(fscfg =>
+                    fscfg.InstanceWide == true
+                )
+            )!
+                .ProviderConfig!.Deserialize<Files.FileProviders.LocalFSFileProviderConfig>()!
+                .BasePath;
+
+            await Task.Run(() => Directory.Delete(tempPath!, true));
+
             await dbConn.GetService<IRelationalDatabaseCreator>().DeleteAsync();
         }
 

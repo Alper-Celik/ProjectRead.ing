@@ -24,6 +24,7 @@ public class UserFileRouter(
                 cfg.DefaultFor.Contains(fileKind) || cfg.FallbackDefault == true
             )
             .OrderBy(cfg => cfg.InstanceWide)
+            .ThenBy(cfg => cfg.FallbackDefault)
             .ThenBy(cfg => cfg.DefaultFor.Length)
             .ThenByDescending(cfg => cfg.Id)
             .Select(cfg => cfg.Id)
