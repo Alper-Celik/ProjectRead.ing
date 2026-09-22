@@ -5,6 +5,7 @@
 using Api.Database;
 using Api.Files.Models;
 using Microsoft.EntityFrameworkCore;
+using NodaTime;
 
 namespace Api.Files.FileProviders;
 
@@ -29,12 +30,18 @@ public class UserFileRouter(
             .FirstAsync();
     }
 
-    public async Task<Guid> CreateFileAsync(
+    public async Task<FileRecord> CreateFileAsync(
         Guid userId,
         FileKind fileKind,
         string contentType,
-        string originalFileName,
-        byte[] sha256Hash
+        // Mostly Ai Generated - Start
+        string? originalFileName,
+        long sizeBytes,
+        // Mostly Ai Generated - End
+        byte[] sha256Hash,
+        // Mostly Ai Generated - Start
+        CancellationToken ct
+    // Mostly Ai Generated - End
     )
     {
         Guid providerBackendConfigId = await GetUsersPrefferedStorage(userId, fileKind);
@@ -49,18 +56,28 @@ public class UserFileRouter(
             FileKind = fileKind,
             ContentType = contentType,
             OriginalFileName = originalFileName,
+            // Mostly Ai Generated - Start
+            SizeBytes = sizeBytes,
+            // Mostly Ai Generated - End
             SHA256 = sha256Hash,
             FileProviderBackendConfigId = providerBackendConfigId,
         };
-        await db.FileRecords.AddAsync(fileRecord);
-        await db.SaveChangesAsync();
-        return fileRecord.Id;
+        // Mostly Ai Generated - Start
+        await db.FileRecords.AddAsync(fileRecord, ct);
+        await db.SaveChangesAsync(ct);
+        return fileRecord;
+        // Mostly Ai Generated - End
     }
 
-    public async Task<Stream?> GetFileAsync(Guid ownerId, Guid id, CancellationToken ct)
+    // Mostly Ai Generated - Start
+    public async Task<FileContent?> GetFileAsync(
+        Guid ownerId,
+        Guid id,
+        CancellationToken ct
+    )
     {
         var fr = await db
-            .FileRecords.Where(fr => fr.OwnerId == ownerId && fr.Id == id)
+            .FileRecords.Where(fr => fr.OwnerId == ownerId && fr.Id == id && fr.Uploaded)
             .Where(fr =>
                 fr.FileProviderBackendConfig.OwnerId == ownerId
                 || fr.FileProviderBackendConfig.InstanceWide
@@ -70,6 +87,11 @@ public class UserFileRouter(
                 fr.FileProviderBackendConfig.ProviderId,
                 fr.FileProviderBackendConfig.ProviderConfig,
                 fr.FileProviderBackendConfig.EncryptedSecrets,
+
+                fr.ContentType,
+                fr.SHA256,
+                fr.OriginalFileName,
+                fr.MetadataAddedAt,
             })
             .FirstOrDefaultAsync(ct);
 
@@ -90,44 +112,88 @@ public class UserFileRouter(
             return null;
         }
 
-        return await fileProvider.GetFileAsync(ownerId, id, ct);
+        var stream = await fileProvider.GetFileAsync(ownerId, id, ct);
+        if (stream is null)
+        {
+            return null;
+        }
+        return new FileContent(
+            stream,
+            fr.ContentType,
+            fr.OriginalFileName,
+            fr.SHA256,
+            fr.MetadataAddedAt
+        );
     }
 
-    public async Task SetFileAsync(
+    // Mostly Ai Generated - End
+
+    // Mostly Ai Generated - Start
+    /// <summary>
+    /// Stores the content for an existing record of <paramref name="ownerId"/>.
+    /// Returns the updated record, or <see langword="null"/> when the provider rejected the
+    /// content because it did not match the declared size or SHA256. Throws when the record
+    /// does not exist for the owner or the provider cannot be constructed.
+    /// </summary>
+    public async Task<FileRecord?> SetFileAsync(
         Guid ownerId,
         Guid id,
         Stream stream,
         CancellationToken ct
     )
     {
-        var fr = await db
-            .FileRecords.Where(fr => fr.OwnerId == ownerId && fr.Id == id)
-            .Where(fr =>
-                fr.FileProviderBackendConfig.OwnerId == ownerId
-                || fr.FileProviderBackendConfig.InstanceWide
-            )
-            .Select(fr => new
-            {
-                fr.FileProviderBackendConfig.ProviderId,
-                fr.FileProviderBackendConfig.ProviderConfig,
-                fr.FileProviderBackendConfig.EncryptedSecrets,
+        var fr =
+            await db
+                .FileRecords.Include(fr => fr.FileProviderBackendConfig)
+                .FirstOrDefaultAsync(
+                    fr =>
+                        fr.OwnerId == ownerId
+                        && fr.Id == id
+                        && (
+                            fr.FileProviderBackendConfig.OwnerId == ownerId
+                            || fr.FileProviderBackendConfig.InstanceWide
+                        ),
+                    ct
+                )
+            ?? throw new ArgumentException("file doesn't exist");
 
-                fr.SHA256,
-            })
-            .FirstOrDefaultAsync(ct);
-
-        if (fr is null)
-        {
-            throw new ArgumentException("file doesn't exist");
-        }
         var fileProvider =
             await fileProviderFactory.New(
                 services,
-                fr.ProviderId,
-                fr.ProviderConfig,
-                fr.EncryptedSecrets
+                fr.FileProviderBackendConfig.ProviderId,
+                fr.FileProviderBackendConfig.ProviderConfig,
+                fr.FileProviderBackendConfig.EncryptedSecrets
             ) ?? throw new NullReferenceException();
 
-        await fileProvider.SetFileAsync(ownerId, id, stream, fr.SHA256, ct);
+        if (
+            !await fileProvider.SetFileAsync(
+                ownerId,
+                id,
+                stream,
+                fr.SHA256,
+                fr.SizeBytes,
+                ct
+            )
+        )
+        {
+            return null;
+        }
+
+        fr.Uploaded = true;
+        fr.RowVersion += 1;
+        fr.MetadataUpdatedAt = Now();
+        await db.SaveChangesAsync(ct);
+        return fr;
     }
+    // Mostly Ai Generated - End
 }
+
+// Mostly Ai Generated - Start
+public record FileContent(
+    Stream Stream,
+    string ContentType,
+    string? OriginalFileName,
+    byte[] SHA256,
+    Instant MetadataAddedAt
+);
+// Mostly Ai Generated - End

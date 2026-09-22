@@ -65,8 +65,10 @@ public class LocalFSFileProvider(LocalFSFileProviderConfig config) : IFileProvid
             ArrayPool<byte>.Shared.Return(copyBuffer)
         );
         using var hasher = IncrementalHash.CreateHash(HashAlgorithmName.SHA256);
-        int bytesRead = 0,
-            totalBytesRead = 0;
+        // Mostly Ai Generated - Start
+        int bytesRead = 0;
+        long totalBytesRead = 0;
+        // Mostly Ai Generated - End
         while (
             (bytesRead = await stream.ReadAsync(new Memory<byte>(copyBuffer), ct)) != 0
         )
@@ -80,6 +82,13 @@ public class LocalFSFileProvider(LocalFSFileProviderConfig config) : IFileProvid
             hasher.AppendData(data.Span);
             await handle.WriteAsync(data, ct);
         }
+
+        // Mostly Ai Generated - Start
+        if (totalBytesRead != sizeBytes)
+        {
+            return false;
+        }
+        // Mostly Ai Generated - End
 
         if (!hasher.GetHashAndReset().SequenceEqual(sha256Hash))
         {

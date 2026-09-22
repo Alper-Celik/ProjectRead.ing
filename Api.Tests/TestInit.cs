@@ -14,6 +14,8 @@ using TUnit.AspNetCore;
 using TUnit.Core.Interfaces;
 using ZeroQL.Client;
 
+[assembly: System.Runtime.Versioning.SupportedOSPlatform("linux")]
+
 namespace Api.Tests;
 
 public class MyWebApplicationFactory : TestWebApplicationFactory<Program> { }
@@ -39,15 +41,17 @@ public abstract class TestInit : WebApplicationTest<MyWebApplicationFactory, Pro
 
     protected override void ConfigureTestConfiguration(IConfigurationBuilder config)
     {
+        var testPrefixName = GetIsolatedName("test_schema");
         Stream strStream = new MemoryStream(
             Encoding.UTF8.GetBytes(
                 JsonSerializer.Serialize(
                     new
                     {
+                        PR_TestPrefix = testPrefixName,
                         IsTest = true,
                         ConnectionStrings = new
                         {
-                            PGSchema = GetIsolatedName("test_schema"),
+                            PGSchema = testPrefixName + "schema",
                             PG = new Npgsql.NpgsqlConnectionStringBuilder(
                                 config.Build().GetConnectionString("PG")
                             )

@@ -4,6 +4,7 @@
 
 using System.Text.Json;
 using Api.Database;
+using Api.Files.Endpoints;
 using Api.Files.FileProviders;
 using Api.Files.Models;
 using Microsoft.EntityFrameworkCore;
@@ -12,9 +13,24 @@ namespace Api.Files;
 
 public class Setup
 {
-    public static void RegisterServices(IServiceCollection services) { }
+    // Mostly Ai Generated - Start
+    public static void RegisterServices(IServiceCollection services)
+    {
+        services.AddSingleton<FileProviderFactory>();
+        services.AddScoped<UserFileRouter>();
+    }
 
-    public static async Task SeedDb(PGContext db)
+    public static void MapEndpoints(IEndpointRouteBuilder route)
+    {
+        route.MapGet("/{id:guid}", GetFileEndpoint.GetFileAsync);
+        route
+            .MapPost("/{id:guid}", UploadFileEndpoint.UploadFileAsync)
+            .DisableAntiforgery();
+    }
+
+    // Mostly Ai Generated - End
+
+    public static async Task SeedDb(PGContext db, IConfiguration config)
     {
         var defaultConfigExists = await db
             .FileProviderBackendConfigs.Where(cfg =>
@@ -22,7 +38,7 @@ public class Setup
             )
             .AsNoTracking()
             .AnyAsync();
-        if (defaultConfigExists)
+        if (!defaultConfigExists)
         {
             var now = Now();
             var fsCfg = new FileProviderBackendConfig()
@@ -34,9 +50,13 @@ public class Setup
                 OwnerId = null,
 
                 InstanceWide = true,
+                FallbackDefault = true,
+                DefaultFor = [],
                 ProviderId = FileProviderId.LocalFsProvider,
                 ProviderConfig = JsonSerializer.SerializeToDocument(
-                    new LocalFSFileProviderConfig("./BlobStorage")
+                    new LocalFSFileProviderConfig(
+                        $"./BlobStorage{config["PR_TestPrefix"] ?? ""}"
+                    )
                 ),
             };
 

@@ -19,4 +19,9 @@ public enum UserPermissionBits : long
 
     UserRead = 1L << 6,
     UserWrite = 1L << 7,
+
+    // Mostly Ai Generated - Start
+    FileRead = 1L << 8,
+    FileWrite = 1L << 9,
+    // Mostly Ai Generated - End
 }

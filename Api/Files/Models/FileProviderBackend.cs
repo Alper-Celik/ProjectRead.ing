@@ -10,7 +10,7 @@ namespace Api.Files.Models;
 
 public class FileProviderBackendConfig : IEntityMetadata
 {
-    public static byte IdPostfix => (byte)IdPostfixes.FileRecord;
+    public static byte IdPostfix => (byte)IdPostfixes.FileProviderBackend;
 
     [Key]
     public Guid Id { get; set; }

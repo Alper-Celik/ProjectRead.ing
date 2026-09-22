@@ -20,6 +20,7 @@ using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 [assembly: DataLoaderModule("ProjectReadingDataLoaders")]
 [assembly: Module("ProjectReadingApi")]
+[assembly: System.Runtime.Versioning.SupportedOSPlatform("linux")]
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +50,7 @@ builder
     .AddFiltering()
     .AddSorting()
     .AddPagingArguments()
+    .AddUploadType()
     .ModifyPagingOptions(opt =>
     {
         opt.MaxPageSize = 50;
@@ -108,6 +110,8 @@ builder
 Api.Database.Setup.RegisterServices(builder.Services);
 Api.Auth.Setup.RegisterServices(builder.Services);
 
+Api.Files.Setup.RegisterServices(builder.Services);
+
 var app = builder.Build();
 
 app.UseWebSockets();
@@ -140,6 +144,7 @@ if (app.Configuration.GetSection("IsTest").Get<bool>())
         RelationalDatabaseCreator databaseCreator = (RelationalDatabaseCreator)
             db.Database.GetService<IDatabaseCreator>();
         await databaseCreator.CreateTablesAsync();
+        await Api.Files.Setup.SeedDb(db, app.Configuration);
     }
 }
 
@@ -154,5 +159,8 @@ Api.Auth.Setup.MapEndpoints(auth);
 
 var works = api.MapGroup("works");
 Api.Works.Setup.MapEndpoints(works);
+
+var files = api.MapGroup("files");
+Api.Files.Setup.MapEndpoints(files);
 
 app.RunWithGraphQLCommands(args);
