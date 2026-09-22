@@ -22,9 +22,12 @@ public class FilesEndpointTests : FilesTestBase
     {
         var http = Factory.CreateClient();
 
-        using var get = await http.GetAsync($"api/files/{Guid.CreateVersion7()}", ct);
+        using var get = await http.GetAsync(
+            $"api/files/{Guid.CreateVersion7().WithPostfix(0xFF)}",
+            ct
+        );
         using var post = await http.PostAsync(
-            $"api/files/{Guid.CreateVersion7()}",
+            $"api/files/{Guid.CreateVersion7().WithPostfix(0xFF)}",
             new MultipartFormDataContent(),
             ct
         );
@@ -237,6 +240,47 @@ public class FilesEndpointTests : FilesTestBase
     }
 
     [Test]
+    public async Task GetFile_OtherUsersRecord_ReturnsNotFoundAndQueryIsScoped(
+        CancellationToken ct
+    )
+    {
+        var (ownerClient, ownerHttp) = await AuthenticatedClients("owner");
+        var id = await AddFileRecordAsync(ownerClient, FileRecordInput());
+
+        using var upload = new MultipartFormDataContent();
+        upload.Add(new ByteArrayContent(SampleContent), "file", "book.epub");
+        using var uploadResponse = await ownerHttp.PostAsync(
+            $"api/files/{id}",
+            upload,
+            ct
+        );
+        await Assert
+            .That(uploadResponse.StatusCode)
+            .IsEqualTo(HttpStatusCode.NoContent);
+
+        var (otherClient, otherHttp) = await AuthenticatedClients(
+            "other-user"
+        );
+
+        using var read = await otherHttp.GetAsync($"api/files/{id}", ct);
+        await Assert.That(read.StatusCode).IsEqualTo(HttpStatusCode.NotFound);
+
+        var query = await otherClient.Query(q =>
+            q.FileRecords(
+                first: 10,
+                after: null,
+                last: null,
+                before: null,
+                where: null,
+                order: null,
+                selector: c => c.Nodes(f => f.Id)
+            )
+        );
+        await Assert.That(query.Errors).IsNull().Or.IsEmpty();
+        await Assert.That(query.Data!).IsEmpty();
+    }
+
+    [Test]
     public async Task UploadFile_WithUnknownId_ReturnsNotFound(CancellationToken ct)
     {
         var (_, http) = await AuthenticatedClients();
@@ -244,7 +288,7 @@ public class FilesEndpointTests : FilesTestBase
         using var form = new MultipartFormDataContent();
         form.Add(new ByteArrayContent(SampleContent), "file", "book.epub");
         using var upload = await http.PostAsync(
-            $"api/files/{Guid.CreateVersion7()}",
+            $"api/files/{Guid.CreateVersion7().WithPostfix(0xFF)}",
             form,
             ct
         );
