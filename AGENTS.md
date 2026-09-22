@@ -17,6 +17,8 @@ dotnet build Api.Tests/Api.Tests.csproj  # regenerates the ZeroQL client from Ap
 
 dotnet test Api.Tests/Api.Tests.csproj --no-build -- \
   --treenode-filter "/*/*/WorksQueryTests/*"   # TUnit/Microsoft Testing Platform filter
+dotnet test Api.Tests/Api.Tests.csproj --no-build -- \
+  --treenode-filter "/*/*/FilesEndpointTests/*"   # REST endpoints: auth, ranges, multipart
 
 just dotnet-build   # dotnet restore --locked-mode + build
 just dotnet-test    # runs tests with coverage (cobertura) + reportgenerator HTML/badges
@@ -42,12 +44,20 @@ Api/
 │   └── Utils/             # IEFTransactionDIAccessorService
 ├── Graphql/               # ErrorCodes, GuidNodeSerializer
 ├── Utils/                 # ValidatorUtils, EntityMetadata, IdPostfixes, MapperUtils, GeneralUtils
-└── Works/
-    ├── Models/            # EF entities: Work, WorkTag, Author, join entities
-    ├── Mutations/         # Add/Update mutations
-    ├── Queries/           # GraphQL query types, DTOs, mappers, data loaders
-    └── PGContext.cs       # DbSet declarations for Works domain
-```
+├── Works/
+│   ├── Models/            # EF entities: Work, WorkTag, Author, join entities
+│   ├── Mutations/         # Add/Update mutations
+│   ├── Queries/           # GraphQL query types, DTOs, mappers, data loaders
+│   └── PGContext.cs       # DbSet declarations for Works domain
+└── Files/
+    ├── Endpoints/         # REST endpoints, one static handler per file
+    ├── FileProviders/     # IFileProvider, LocalFSFileProvider, UserFileRouter, FileProviderFactory
+    ├── Models/            # FileRecord, FileProviderBackendConfig
+    ├── Mutations/         # Add metadata / add+upload / upload-content mutations
+    ├── Queries/           # FileRecord query, node, data loaders, DTO, mapper
+    ├── Setup.cs           # DI registration, endpoint mapping, backend seeding
+    ├── PGContext.cs       # DbSet declarations for Files domain
+    └── FileKind.cs        # FileKind enum
 
 ## Testing
 
@@ -68,6 +78,11 @@ against a real PostgreSQL instance.
   delete the database on dispose — never point tests at a shared database.
 - **Helpers**: `WorksTestBase` (extends `TestInit`) provides `AuthenticatedClient`,
   `AddAuthor`/`AddTag`/`AddWork`, `Register`/`Login`, `NodeIdToGuid`, and `AssertErrorCode`.
+  `FilesTestBase` (extends `WorksTestBase`) adds `AuthenticatedClients` (returns both a
+  GraphQL `ApiClient` and a raw `HttpClient` for the REST endpoints — set the
+  `Authorization` header on **both**, a helper that authenticates only one silently
+  401s the other), `FileRecordInput`, `UploadOf` (ZeroQL supports the `Upload` scalar:
+  `new Upload(fileName, stream)`) and `AddFileRecordAsync`.
 - **Convention**: every new query/mutation/connection should get a test in
   `WorksQueryTests`/`WorksMutationTests`; these are the coverage source for
   `Api/Works/Queries` and `Api/Works/Mutations`. For connections, include at least one
@@ -76,6 +91,11 @@ against a real PostgreSQL instance.
   When testing unknown-id errors, use `Guid.CreateVersion7().WithPostfix(0xFF)` (never a
   bare `CreateVersion7()`, whose random last byte can collide with a real postfix and
   make the test flaky).
+  The same applies to `Api/Files` (`FilesQueryTests`/`FilesMutationTests`/
+  `FilesEndpointTests`); `Api.Files.Setup.SeedDb` must run only where tables exist
+  (dev path under `!IsTest`, test path after `CreateTablesAsync`) or every request fails
+  with PostgreSQL `42P01` — it seeds the fallback LocalFS backend
+  (`./BlobStorage{PR_TestPrefix}`, gitignored).
 
 ## Key Patterns
 
@@ -93,7 +113,7 @@ IDbEntityMetadata     →  + Guid OwnerId
 var id = Guid.CreateVersion7().WithPostfix(Models.Work.IdPostfix);
 ```
 
-IdPostfixes enum: `User=0, Work=1, Author=2, WorkTag=3`
+IdPostfixes enum: `User=0, Work=1, Author=2, WorkTag=3, FileRecord=4, FileProviderBackend=5`
 
 ### Permission Bits
 
@@ -104,6 +124,7 @@ IdPostfixes enum: `User=0, Work=1, Author=2, WorkTag=3`
     AuthorRead = 1L << 2,   AuthorWrite = 1L << 3,
     TagRead = 1L << 4,  TagWrite = 1L << 5,
     UserRead = 1L << 6,     UserWrite = 1L << 7,
+    FileRead = 1L << 8,     FileWrite = 1L << 9,
 }
 ```
 
@@ -360,6 +381,56 @@ await db.Works.GetManyToManyIds(
 > Always null-coalesce loader results before passing to the item loader — `GetManyToManyIds`
 > simply omits parents that have no join rows.
 
+### Files Slice (immutable blob storage)
+
+`FileRecord` is an immutable metadata row for a stored blob; `Uploaded` distinguishes a
+reserved record (metadata only) from one whose bytes are stored. There is deliberately **no
+update mutation** — the only state transition (`Uploaded`, plus `RowVersion`/`MetadataUpdatedAt`)
+happens inside `UserFileRouter.SetFileAsync`, not through the API.
+
+- **Router contract** (`Api/Files/FileProviders/UserFileRouter.cs`, scoped):
+  `CreateFileAsync` picks the backend via `GetUsersPrefferedStorage` and returns the tracked
+  entity; `GetFileAsync` returns `FileContent?` (`Stream`, `ContentType`, `OriginalFileName`,
+  `SHA256`, `MetadataAddedAt`) or `null` when the row is missing / not uploaded / the provider
+  is unknown; `SetFileAsync` returns the updated `FileRecord`, or `null` when the provider
+  rejected the content. Providers MUST verify both the declared size and the SHA-256
+  (`LocalFSFileProvider.SetFileAsync` rejects `totalBytesRead != sizeBytes` and hash mismatch;
+  `totalBytesRead` is a `long` — an `int` wraps past 2 GiB and silently defeats both checks).
+- **Mutations** (three, sharing `AddFileRecordInput`, and no Mapperly input mapper — the
+  router builds the entity, don't duplicate construction): `addFileRecordMutation` (metadata
+  only), `addFileRecordWithFileMutation` (metadata + `Upload`; on failure it throws
+  `FILE_UPLOAD_FAILED` *before* `CommitAsync`, so the transaction removes the row — no
+  explicit delete, and LocalFS only `File.Move`s its temp file after the hash matches),
+  `uploadFileRecordContentMutation` (content for a reserved record; `ID_DOES_NOT_EXIST` /
+  `FILE_ALREADY_UPLOADED` via the input validator).
+- **`sha256` on the wire is lowercase hex**, exposed by a value resolver on `FileRecordNode`
+  (`Convert.ToHexStringLower`) over a `[GraphQLIgnore] byte[]` DTO member. Never put the
+  conversion inside `ProjectToDto` — Npgsql has no translator for `Convert.ToHexString*`, so
+  it fails at query time under `ToPageWithDataLoaderAsync`.
+- **REST** (`Api/Files/Endpoints/`, one static handler per file, mapped from
+  `Api/Files/Setup.MapEndpoints` under `/api/files`):
+  - `GET /api/files/{id}` — `Results.File(..., enableRangeProcessing: true)` gives
+    `Accept-Ranges`/`206`/`If-Range`; needs a seekable stream (LocalFS returns
+    `File.OpenRead`). Headers: `Cache-Control: private, max-age=31536000, immutable`
+    (blobs are content-addressed and never rewritten — a change is a new record/id) and
+    `X-Content-Type-Options: nosniff` (the stored content type is client-declared). Inline
+    only for the whitelist (`image/avif`, `image/jpeg`, `application/epub+zip`); everything
+    else is `application/octet-stream` +
+    `attachment; filename="<originalFileName ?? recordId>"`.
+  - `POST /api/files/{id}` — multipart `IFormFile`; 404 / 409 / 422 / 204.
+- **Auth on minimal-API handlers**: `[PermissionCheckAuthorize(...)]` works as an attribute
+  on the handler method because `RouteEndpointDataSource` copies handler-method attributes
+  into endpoint metadata — no `.RequireAuthorization` chaining. `[FromForm]`/`IFormFile`
+  endpoints need `.DisableAntiforgery()` (the app registers no antiforgery services), and
+  per-endpoint limits are attributes too (`[RequestFormLimits]` implements
+  `IFormOptionsMetadata`, `[RequestSizeLimit]` implements `IRequestSizeLimitMetadata`).
+- **Uploads**: the `Upload` scalar needs `.AddUploadType()` in `Program.cs`. Multipart limits
+  are endpoint metadata and `/graphql` honors them too (`DefaultHttpRequest` builds the form
+  feature with `HttpContext.GetEndpoint()`), so `MapGraphQL()` gets the same
+  `RequestFormLimitsAttribute` via `.WithMetadata(...)`. Kestrel `MaxRequestBodySize` is 5 GiB
+  — its 30 MiB default would 413 before any form limit applies.
+`Api.Files.Setup.SeedDb` inserts the fallback LocalFS backend config on startup (see Testing).
+
 ### Validation Helpers (Api.Utils.ValidatorUtils)
 
 - `BeginTransaction(tx)` - begin the shared transaction as the validator's first rule
@@ -404,6 +475,10 @@ public DbSet<Author> Authors { get; set; }
 // Api/Auth/PGContext.cs
 public DbSet<UserEF> Users { get; set; }
 public DbSet<UserTokenEF> UserTokens { get; set; }
+
+// Api/Files/PGContext.cs
+public DbSet<FileRecord> FileRecords { get; set; }
+public DbSet<FileProviderBackendConfig> FileProviderBackendConfigs { get; set; }
 ```
 
 ### EF Entity Models
@@ -413,6 +488,8 @@ public DbSet<UserTokenEF> UserTokens { get; set; }
 | Work     | works           | Title, Description?, WorkPublishedAt?, WorkUpdatedAt?, WorkIdentifiers | 1         |
 | WorkTag  | work_tags       | TagNamespace (string[]), TagName                                  | 3         |
 | Author   | authors         | FirstName?, LastName?, DisplayName, PenNames (List<string>)       | 2         |
+| FileRecord                | file_records    | FileKind, FileProviderBackendConfigId, Uploaded, OriginalFileName?, ContentType, SizeBytes, SHA256 | 4         |
+| FileProviderBackendConfig | file_provider_backend_configs | OwnerId?, InstanceWide, FallbackDefault, DefaultFor (FileKind[]), ProviderId, ProviderConfig (JsonDocument?) | 5 |
 
 ### Conventions
 
@@ -440,3 +517,14 @@ public DbSet<UserTokenEF> UserTokens { get; set; }
   source-generated modules — track releases and bump to stable when available.
 - A GraphQL field-name gotcha: HotChocolate strips only the `Async` suffix, so
   `UpdateWorkMutation` becomes `updateWorkMutation` (NOT `updateWork`).
+- REST endpoints live in `Api/<Slice>/Endpoints/`, one static handler per file, with the
+  auth policy and `[RequestFormLimits]` as attributes on the handler function (see the
+  Files Slice section for why attribute-on-handler works)
+- When a domain service already constructs the entity (e.g. `UserFileRouter.CreateFileAsync`),
+  mutations call it instead of adding a Mapperly input mapper that duplicates construction
+- AI-authored regions are wrapped in `// Mostly Ai Generated - Start` / `- End` markers
+- Binary values (SHA-256) go over the wire as lowercase hex via a node value resolver — never
+  as `byte[]` (serializes as `Base64String`) and never converted inside `ProjectToDto`
+- The app is Linux-only: `[assembly: SupportedOSPlatform("linux")]` on both `Api` and
+  `Api.Tests` (per-class annotations cascade CA1416 up the whole call chain — annotate the
+  assembly instead)
