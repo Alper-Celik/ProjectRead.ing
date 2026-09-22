@@ -69,7 +69,6 @@ public class UserFileRouter(
         // Mostly Ai Generated - End
     }
 
-    // Mostly Ai Generated - Start
     public async Task<FileContent?> GetFileAsync(
         Guid ownerId,
         Guid id,
@@ -125,8 +124,6 @@ public class UserFileRouter(
             fr.MetadataAddedAt
         );
     }
-
-    // Mostly Ai Generated - End
 
     // Mostly Ai Generated - Start
     /// <summary>
