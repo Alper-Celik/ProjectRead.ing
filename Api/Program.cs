@@ -100,7 +100,7 @@ builder.Services.AddFluentValidationAutoValidation();
 
 builder
     .Services.AddAuthentication()
-    .AddScheme<AuthenticationSchemeOptions, AuthHandler>("x_user", null);
+    .AddScheme<AuthenticationSchemeOptions, AuthHandler>("ProjectReading", null);
 builder.Services.AddSingleton<
     IAuthorizationHandler,
     PermissionCheckAuthorizationHandler

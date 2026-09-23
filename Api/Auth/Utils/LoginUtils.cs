@@ -5,7 +5,9 @@
 using System.Buffers.Text;
 using Api.Auth.Models;
 using Api.Database;
+using Api.Database.Utils;
 using Geralt;
+using LinqKit;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -15,7 +17,11 @@ namespace Api.Auth.Utils;
 public static class LoginUtils
 {
     public const char PrefixSeparator = '_';
+
     public const string UserTokenPrefixName = "user";
+    public const string RemoteServiceTokenPrefixName = "service";
+    public static List<string> TokenPrefixesNames =>
+        [UserTokenPrefixName, RemoteServiceTokenPrefixName];
     public const string TokenCookieName = "auth_token";
     private static bool s_adminCreated = false;
 
@@ -73,20 +79,18 @@ public static class LoginUtils
         return TypedResults.Ok(new LoginResultDTO(token));
     }
 
-    public static async Task UpdateLastUsedForUserToken(UserTokenEF token, PGContext ctx)
+    public static T UpdateLastUsedTokens<T>(T token)
+        where T : class, ITokenTime
     {
         var currentTime = SystemClock.Instance.GetCurrentInstant();
         if (
             token.LastUsed is null
-            || token.LastUsed + Duration.FromMinutes(1) <= currentTime
+            || token.LastUsed + Duration.FromMinutes(10) <= currentTime
         )
         {
-            await ctx
-                .UserTokens.Where(ut => ut.TokenHash.SequenceEqual(token.TokenHash))
-                .ExecuteUpdateAsync(setter =>
-                    setter.SetProperty(ut => ut.LastUsed, currentTime)
-                );
+            token.LastUsed = currentTime;
         }
+        return token;
     }
 
     public record LoginResultDTO(string AuthToken);
