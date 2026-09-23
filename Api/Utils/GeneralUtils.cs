@@ -65,7 +65,7 @@ public static class GeneralUtils
     public static NodaTime.Instant Now() =>
         NodaTime.SystemClock.Instance.GetCurrentInstant();
 
-    public Guid? TryParseGuid(this ReadOnlySpan<char> s) =>
+    public static Guid? TryParseGuid(this ReadOnlySpan<char> s) =>
         Guid.TryParse(s, out Guid g) ? null : g;
 
     public static T? TryDeserialize<T>(

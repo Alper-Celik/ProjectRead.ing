@@ -48,7 +48,7 @@ public class AuthTests : TestInit
         await Assert
             .That(loginSuccess.Data)
             .IsNotNullOrEmpty()
-            .And.StartsWith(Auth.Utils.LoginUtils.UserTokenPrefixName);
+            .And.StartsWith(Auth.Utils.AuthUtils.UserTokenPrefixName);
         await Assert.That(loginFail.Data).IsNullOrEmpty();
     }
 

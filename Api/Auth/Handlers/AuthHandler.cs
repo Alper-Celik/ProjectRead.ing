@@ -20,16 +20,15 @@ class AuthHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
     UrlEncoder encoder,
-    PGContext db,
-    IEFTransactionDIAccessorService txGetter
+    PGContext db
 ) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     protected override async Task<AuthenticateResult> HandleAuthenticateAsync()
     {
         string?[] tokens =
         [
-            Context.Request.Headers.Authorization.LastOrDefault(),
-            Context.Request.Cookies[LoginUtils.TokenCookieName],
+            Context.Request.Headers.Authorization.FirstOrDefault(),
+            Context.Request.Cookies[AuthUtils.TokenCookieName],
         ];
         var tokenHash = SelectToken(tokens);
 
@@ -41,11 +40,11 @@ class AuthHandler(
         var identity = await (
             tokenHash.Prefix switch
             {
-                LoginUtils.UserTokenPrefixName => GetUserIdentityAsync(
+                AuthUtils.UserTokenPrefixName => GetUserIdentityAsync(
                     tokenHash.TokenHash
                 ),
 
-                LoginUtils.RemoteServiceTokenPrefixName => Context
+                AuthUtils.RemoteServiceTokenPrefixName => Context
                     .Request.Headers[RemoteServiceToken.ServiceIdentifierType]
                     .First()
                     .TryParseGuid()
@@ -75,10 +74,7 @@ class AuthHandler(
     {
         var tokenHashes = tokens
             .Where(s =>
-                s != null
-                && LoginUtils.TokenPrefixesNames.Any(p =>
-                    s.StartsWith(p + LoginUtils.PrefixSeparator)
-                )
+                s != null && AuthUtils.TokenPrefixesNames.Any(p => s.StartsWith(p))
             )
             .Select(s =>
             {
@@ -86,8 +82,10 @@ class AuthHandler(
                 {
                     return null;
                 }
-                var prefix = s.Split(LoginUtils.PrefixSeparator).First();
-                var apiToken = Base64Url.DecodeFromChars(s.AsSpan()[prefix.Length..]);
+                var prefix = s.Split(AuthUtils.PrefixSeparator).First();
+                var apiToken = Base64Url.DecodeFromChars(
+                    s.AsSpan()[(prefix.Length + 1)..]
+                );
 
                 var tokenHash = new byte[32];
                 BLAKE2b.ComputeHash(tokenHash, apiToken);
@@ -110,7 +108,7 @@ class AuthHandler(
         {
             return null;
         }
-        userToken = LoginUtils.UpdateLastUsedTokens(userToken);
+        userToken = AuthUtils.UpdateLastUsedTokens(userToken);
 
         await db.SaveChangesAsync();
 
@@ -143,8 +141,8 @@ class AuthHandler(
             return null;
         }
 
-        LoginUtils.UpdateLastUsedTokens(serviceToken);
-        LoginUtils.UpdateLastUsedTokens(userPermission);
+        AuthUtils.UpdateLastUsedTokens(serviceToken);
+        AuthUtils.UpdateLastUsedTokens(userPermission);
 
         await db.SaveChangesAsync();
 

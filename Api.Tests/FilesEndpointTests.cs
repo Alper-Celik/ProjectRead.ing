@@ -254,13 +254,9 @@ public class FilesEndpointTests : FilesTestBase
             upload,
             ct
         );
-        await Assert
-            .That(uploadResponse.StatusCode)
-            .IsEqualTo(HttpStatusCode.NoContent);
+        await Assert.That(uploadResponse.StatusCode).IsEqualTo(HttpStatusCode.NoContent);
 
-        var (otherClient, otherHttp) = await AuthenticatedClients(
-            "other-user"
-        );
+        var (otherClient, otherHttp) = await AuthenticatedClients("other-user");
 
         using var read = await otherHttp.GetAsync($"api/files/{id}", ct);
         await Assert.That(read.StatusCode).IsEqualTo(HttpStatusCode.NotFound);

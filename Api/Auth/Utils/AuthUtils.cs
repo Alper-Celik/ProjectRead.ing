@@ -14,7 +14,7 @@ using NodaTime;
 
 namespace Api.Auth.Utils;
 
-public static class LoginUtils
+public static class AuthUtils
 {
     public const char PrefixSeparator = '_';
 
@@ -26,6 +26,10 @@ public static class LoginUtils
     private static bool s_adminCreated = false;
 
     public static string UserTokenPrefix => UserTokenPrefixName + PrefixSeparator;
+
+    // see https://www.rfc-editor.org/rfc/rfc9106.html#name-recommendations
+    public const int ARGON2ID_ITER = 3;
+    public const int ARGON2ID_MEM_BYTES = 64 * 1024 * 1024;
 
     public static async Task<string> CreateUserSession(
         Guid userId,
