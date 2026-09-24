@@ -46,8 +46,8 @@ class AuthHandler(
 
                 AuthUtils.RemoteServiceTokenPrefixName => Context
                     .Request.Headers[RemoteServiceToken.ServiceIdentifierType]
-                    .First()
-                    .TryParseGuid()
+                    .FirstOrDefault()
+                    ?.TryParseGuid()
                     is { } id
                     ? GetServiceIdentity(tokenHash.TokenHash, id)
                     : Task.FromResult<ClaimsIdentity?>(null),

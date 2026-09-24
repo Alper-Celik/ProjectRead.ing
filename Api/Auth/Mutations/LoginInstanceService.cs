@@ -16,10 +16,11 @@ using NodaTime;
 
 namespace Api.Auth.Mutations;
 
+/// <param name="CurrentSecond">Unix timestamp in seconds (GraphQL Long).</param>
 public record LoginInstanceServiceInput(
     string AuthProof,
     string Salt,
-    Instant CurrentSecond
+    long CurrentSecond
 );
 
 public record LoginInstanceServicePayload(string Token);
@@ -39,12 +40,9 @@ public static partial class LoginInstanceServiceMutations
         var proof = HKDF.DeriveKey(
             HashAlgorithmName.SHA256,
             Base64Url.DecodeFromChars(config["ProjectReadingSecretSeed"]),
-            720,
+            720 / 8,
             Base64Url.DecodeFromChars(input.Salt),
-            Encoding.UTF8.GetBytes(
-                "The Instance Service Auth : "
-                    + input.CurrentSecond.ToUnixTimeMilliseconds()
-            )
+            Encoding.UTF8.GetBytes("The Instance Service Auth : " + input.CurrentSecond)
         );
 
         if (Geralt.ConstantTime.Equals(proof, Base64Url.DecodeFromChars(input.AuthProof)))
@@ -53,6 +51,7 @@ public static partial class LoginInstanceServiceMutations
                 RemoteService.TheInstanceServiceId,
                 db
             );
+            await db.SaveChangesAsync(ct);
 
             await txAccessor.CommitTX(ct);
             return new(token);
@@ -78,7 +77,7 @@ public class LoginInstanceServiceInputValidator
         RuleFor(i => i.Salt).Must(str => Base64Url.IsValid(str)).MinimumLength(22);
 
         RuleFor(i => i.CurrentSecond)
-            .LessThan((_) => Now().Plus(Duration.FromMinutes(5)))
-            .GreaterThan((_) => Now().Minus(Duration.FromMinutes(5)));
+            .LessThan((_) => Now().Plus(Duration.FromMinutes(5)).ToUnixTimeSeconds())
+            .GreaterThan((_) => Now().Minus(Duration.FromMinutes(5)).ToUnixTimeSeconds());
     }
 }

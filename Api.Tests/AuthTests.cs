@@ -49,8 +49,34 @@ public class AuthTests : TestInit
             .That(loginSuccess.Data)
             .IsNotNullOrEmpty()
             .And.StartsWith(Auth.Utils.AuthUtils.UserTokenPrefixName);
+
         await Assert.That(loginFail.Data).IsNullOrEmpty();
     }
+
+    // Mostly Ai Generated - Start
+    [Test]
+    public async Task NonAdminRegistrations_AreUnlimited_EvenAfterAdminExists(
+        CancellationToken ct
+    )
+    {
+        await AddUser(Client, "first_admin", true);
+
+        var users = new[]
+        {
+            AddUser(Client, "reader_1", false),
+            AddUser(Client, "reader_2", false),
+            AddUser(Client, "reader_3", false),
+        };
+        await Task.WhenAll(users);
+
+        foreach (var result in users.Select(u => u.Result))
+        {
+            result.HttpResponseMessage.EnsureSuccessStatusCode();
+            await Assert.That(result.Errors).IsNull().Or.IsEmpty();
+        }
+    }
+
+    // Mostly Ai Generated - End
 
     private static async Task<ZeroQL.GraphQLResult<DateTimeOffset>> AddUser(
         ApiClient client,

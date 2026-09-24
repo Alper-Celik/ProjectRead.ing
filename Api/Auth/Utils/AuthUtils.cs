@@ -23,7 +23,6 @@ public static class AuthUtils
     public static List<string> TokenPrefixesNames =>
         [UserTokenPrefixName, RemoteServiceTokenPrefixName];
     public const string TokenCookieName = "auth_token";
-    private static bool s_adminCreated = false;
 
     public static string UserTokenPrefix => UserTokenPrefixName + PrefixSeparator;
     public static string RemoteServiceTokenPrefix =>
@@ -82,16 +81,8 @@ public static class AuthUtils
         return UserTokenPrefix + Base64Url.EncodeToString(apiToken);
     }
 
-    public static async Task<bool> CanAdminRegister(PGContext db)
-    {
-        if (s_adminCreated)
-        {
-            return false;
-        }
-
-        s_adminCreated = await db.Users.AnyAsync(u => u.Admin == true);
-        return !s_adminCreated;
-    }
+    public static async Task<bool> CanAdminRegister(PGContext db) =>
+        !await db.Users.AnyAsync(u => u.Admin == true);
 
     public static Ok<LoginResultDTO> LogUserIn(HttpContext ctx, string token)
     {
