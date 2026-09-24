@@ -10,6 +10,7 @@ public enum IdPostfixes : byte
     WorkTag = 3,
     FileRecord = 4,
     FileProviderBackend = 5,
+    RemoteService = 6,
 }
 
 public static class GuidExtensions

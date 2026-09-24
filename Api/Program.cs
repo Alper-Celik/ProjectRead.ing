@@ -100,7 +100,7 @@ builder.Services.AddFluentValidationAutoValidation();
 
 builder
     .Services.AddAuthentication()
-    .AddScheme<AuthenticationSchemeOptions, AuthHandler>("x_user", null);
+    .AddScheme<AuthenticationSchemeOptions, AuthHandler>("ProjectReading", null);
 builder.Services.AddSingleton<
     IAuthorizationHandler,
     PermissionCheckAuthorizationHandler
@@ -148,6 +148,7 @@ if (app.Configuration["GRAPHQL_EXPORT"] != "1")
         await databaseCreator.CreateTablesAsync();
     }
     await Api.Files.Setup.SeedDb(db, app.Configuration);
+    await Api.Auth.Setup.SeedDb(db, CancellationToken.None);
 }
 
 app.UseStaticFiles();

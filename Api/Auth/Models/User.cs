@@ -11,6 +11,7 @@ namespace Api.Auth.Models;
 
 [Table("users")]
 [Index(nameof(Email), IsUnique = true)]
+[Index(nameof(Admin))]
 public class UserEF : IEntityMetadata
 {
     public static byte IdPostfix => (byte)IdPostfixes.User;

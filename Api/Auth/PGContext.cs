@@ -12,4 +12,10 @@ public partial class PGContext : DbContext
     public DbSet<UserEF> Users { get; set; }
 
     public DbSet<UserTokenEF> UserTokens { get; set; }
+
+    public DbSet<RemoteService> RemoteServices { get; set; }
+
+    public DbSet<RemoteServiceToken> RemoteServiceTokens { get; set; }
+
+    public DbSet<RemoteServiceUserPermission> RemoteServiceUserPermissions { get; set; }
 }

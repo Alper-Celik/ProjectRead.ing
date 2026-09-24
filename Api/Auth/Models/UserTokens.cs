@@ -4,17 +4,20 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq.Expressions;
 using NodaTime;
 
 namespace Api.Auth.Models;
 
 [Table("user_tokens")]
-public class UserTokenEF
+public class UserTokenEF : ITokenTime
 {
     public const string PermissionBitsType = "PermissionBitsType";
 
     [ForeignKey(nameof(Owner))]
     public Guid UserId { get; set; }
+
+    public string? SessionName { get; set; }
 
     [Key]
     public required byte[] TokenHash { get; set; }
@@ -27,4 +30,7 @@ public class UserTokenEF
 
     // Navigation Properties
     public UserEF Owner { get; set; } = null!;
+
+    public Expression<Func<UserTokenEF, UserTokenEF, bool>> Compare =>
+        (t1, t2) => t1.TokenHash.SequenceEqual(t2.TokenHash);
 }
