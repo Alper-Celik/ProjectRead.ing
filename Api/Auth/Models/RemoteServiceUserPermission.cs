@@ -24,6 +24,6 @@ public class RemoteServiceUserPermission : ITokenTime
     public Instant? LastUsed { get; set; }
 
     // Navigation Properties
-    public RemoteServices.Models.RemoteService RemoteService { get; set; } = null;
+    public RemoteService RemoteService { get; set; } = null;
     public UserEF User { get; set; } = null!;
 }

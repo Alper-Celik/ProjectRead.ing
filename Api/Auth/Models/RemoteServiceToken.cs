@@ -23,10 +23,6 @@ public class RemoteServiceToken : ITokenTime
 
     public Instant? LastUsed { get; set; }
 
-    public bool InstanceWide { get; set; }
-
-    public required UserPermissionBits DefaultInstanceWidePermisssion { get; set; }
-
     // Navigation Properties
-    public RemoteServices.Models.RemoteService RemoteService { get; set; } = null!;
+    public RemoteService RemoteService { get; set; } = null!;
 }

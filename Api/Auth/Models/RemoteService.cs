@@ -4,13 +4,16 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
-using Api.Auth.Models;
 
-namespace Api.RemoteServices.Models;
+namespace Api.Auth.Models;
 
 [Table("remote_services")]
 public class RemoteService : IEntityMetadata
 {
+    public static string TheInstanceServiceName => "The Instance Service";
+    public static Guid TheInstanceServiceId =>
+        new Guid("00000000-0000-7000-8000-000000000000").WithPostfix(IdPostfix);
+
     public static byte IdPostfix => (byte)IdPostfixes.RemoteService;
 
     [Key]
@@ -22,6 +25,8 @@ public class RemoteService : IEntityMetadata
     public required string Name { get; set; }
 
     public bool IsInstanceService { get; set; }
+
+    public required UserPermissionBits DefaultInstanceWidePermisssion { get; set; }
 
     [ForeignKey(nameof(Owner))]
     public Guid? OwnerId { get; set; }

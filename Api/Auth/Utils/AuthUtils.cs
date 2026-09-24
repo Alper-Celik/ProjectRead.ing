@@ -26,10 +26,35 @@ public static class AuthUtils
     private static bool s_adminCreated = false;
 
     public static string UserTokenPrefix => UserTokenPrefixName + PrefixSeparator;
+    public static string RemoteServiceTokenPrefix =>
+        RemoteServiceTokenPrefixName + PrefixSeparator;
 
     // see https://www.rfc-editor.org/rfc/rfc9106.html#name-recommendations
     public const int ARGON2ID_ITER = 3;
     public const int ARGON2ID_MEM_BYTES = 64 * 1024 * 1024;
+
+    public static async Task<string> CreateRemoteServiceSession(
+        Guid serviceId,
+        PGContext db
+    )
+    {
+        byte[] apiToken = new byte[32];
+        SecureRandom.Fill(apiToken);
+
+        byte[] tokenHash = new byte[32];
+        BLAKE2b.ComputeHash(tokenHash, apiToken);
+
+        var serviceToken = new RemoteServiceToken
+        {
+            RemoteServiceId = serviceId,
+            TokenHash = tokenHash,
+            CreationTime = Now(),
+        };
+
+        await db.RemoteServiceTokens.AddAsync(serviceToken);
+
+        return RemoteServiceTokenPrefix + Base64Url.EncodeToString(apiToken);
+    }
 
     public static async Task<string> CreateUserSession(
         Guid userId,
@@ -40,15 +65,16 @@ public static class AuthUtils
         var apiToken = new byte[32];
         SecureRandom.Fill(apiToken);
 
-        Span<byte> tokenHash = stackalloc byte[32];
+        byte[] tokenHash = new byte[32];
         BLAKE2b.ComputeHash(tokenHash, apiToken);
 
         var dbToken = new UserTokenEF
         {
             UserId = userId,
-            TokenHash = tokenHash.ToArray(),
+            SessionName = sessionName,
+            TokenHash = tokenHash,
             Permissions = UserPermissionBits.All,
-            CreationTime = SystemClock.Instance.GetCurrentInstant(),
+            CreationTime = Now(),
         };
 
         await ctx.UserTokens.AddAsync(dbToken);

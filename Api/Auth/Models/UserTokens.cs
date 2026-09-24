@@ -17,6 +17,8 @@ public class UserTokenEF : ITokenTime
     [ForeignKey(nameof(Owner))]
     public Guid UserId { get; set; }
 
+    public string? SessionName { get; set; }
+
     [Key]
     public required byte[] TokenHash { get; set; }
 
