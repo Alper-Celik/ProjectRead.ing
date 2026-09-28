@@ -8,6 +8,7 @@ using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
 using Api.Database.Utils;
+using Api.Utils;
 using FluentValidation;
 using Geralt;
 using HotChocolate.Authorization;
@@ -69,14 +70,7 @@ public class RegisterInputValidator : AbstractValidator<RegisterInput>
 {
     public RegisterInputValidator(PGContext db, IEFTransactionDIAccessorService tx)
     {
-        RuleFor(w => w)
-            .MustAsync(
-                async (_, ct) =>
-                {
-                    await tx.BeginOrGetTransactionAsync();
-                    return true;
-                }
-            );
+        RuleFor(w => w).BeginTransaction(tx);
 
         RuleFor(r => r.Email)
             .Must(e => new EmailAddressAttribute().IsValid(e.NormalizeEmail()))

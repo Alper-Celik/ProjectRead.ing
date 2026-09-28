@@ -13,6 +13,7 @@ public interface IEFTransactionDIAccessorService : IAsyncDisposable, IDisposable
         CancellationToken? ct = null
     );
     public ValueTask FinishTransaction();
+    public ValueTask SaveAndCommitTX(CancellationToken ct = default);
     public ValueTask CommitTX(CancellationToken ct = default);
 }
 
@@ -66,5 +67,11 @@ public class EFTransactionDIAccessorService(PGContext db)
             await _tx.DisposeAsync();
             _tx = null;
         }
+    }
+
+    public async ValueTask SaveAndCommitTX(CancellationToken ct = default)
+    {
+        await db.SaveChangesAsync(ct);
+        await CommitTX(ct);
     }
 }

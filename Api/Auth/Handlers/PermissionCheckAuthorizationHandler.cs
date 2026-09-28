@@ -19,6 +19,7 @@ public class PermissionPolicyProvider(IOptions<AuthorizationOptions> options)
     : DefaultAuthorizationPolicyProvider(options)
 {
     public const string POLICY_PREFIX = "PermissionBits_";
+    public const string RemoteServicePolicyName = "RemoteService";
 
     public override Task<AuthorizationPolicy?> GetPolicyAsync(string policyName)
     {
@@ -32,6 +33,15 @@ public class PermissionPolicyProvider(IOptions<AuthorizationOptions> options)
                     .AddRequirements(
                         new PermissionCheckRequirement((UserPermissionBits)permissionBits)
                     )
+                    .Build()
+            );
+        }
+
+        if (policyName == RemoteServicePolicyName)
+        {
+            return Task.FromResult<AuthorizationPolicy?>(
+                new AuthorizationPolicyBuilder()
+                    .RequireClaim(RemoteServiceToken.ServiceIdentifierType)
                     .Build()
             );
         }

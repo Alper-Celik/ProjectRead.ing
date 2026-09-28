@@ -15,6 +15,7 @@ public static class Setup
 {
     public static void RegisterServices(IServiceCollection services)
     {
+        services.AddScoped<ICurrentServiceId, CurrentServiceId>();
         services.AddScoped<ICurrentUserId, CurrentUserId>();
         services.AddHttpContextAccessor();
         services.AddSingleton<IAuthorizationPolicyProvider, PermissionPolicyProvider>();

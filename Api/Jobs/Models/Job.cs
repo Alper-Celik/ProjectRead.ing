@@ -20,6 +20,7 @@ public class JobData
 
     public Guid? LeaserId { get; set; }
     public Instant? LeaseEnd { get; set; }
+    public Instant? LeasedAt { get; set; }
 
     public Guid[]? FailedLeasers { get; set; }
 

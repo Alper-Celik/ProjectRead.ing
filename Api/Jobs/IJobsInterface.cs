@@ -8,6 +8,7 @@ using NodaTime;
 
 namespace Api.Jobs;
 
+/// TODO: should be scoped and use scopes transaction
 public interface IJobsInterfae
 {
     /// <param name="timeout"> if timeout is zero returns current jobs or none if there
