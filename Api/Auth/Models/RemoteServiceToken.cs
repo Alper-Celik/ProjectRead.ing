@@ -12,6 +12,8 @@ namespace Api.Auth.Models;
 public class RemoteServiceToken : ITokenTime
 {
     public const string ServiceIdentifierType = "ServiceIdentifierType";
+    public const string ServiceAllowedJobsType = "ServiceAllowedJobsType";
+    public const string ServiceImpersonatedUserHeader = "as_user";
 
     [Key]
     public required byte[] TokenHash { get; set; }

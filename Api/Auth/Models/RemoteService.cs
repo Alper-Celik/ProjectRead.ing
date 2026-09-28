@@ -26,6 +26,7 @@ public class RemoteService : IEntityMetadata
 
     public bool IsInstanceService { get; set; }
 
+    public List<string> AllowedJobs { get; set; } = [];
     public required UserPermissionBits DefaultInstanceWidePermisssion { get; set; }
 
     [ForeignKey(nameof(Owner))]

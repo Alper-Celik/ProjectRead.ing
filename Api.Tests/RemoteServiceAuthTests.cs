@@ -270,7 +270,7 @@ public class RemoteServiceAuthTests : FilesTestBase
             serviceToken
         );
         svcHttp.DefaultRequestHeaders.Add(
-            RemoteServiceToken.ServiceIdentifierType,
+            RemoteServiceToken.ServiceImpersonatedUserHeader,
             userId.ToString()
         );
 
@@ -303,7 +303,7 @@ public class RemoteServiceAuthTests : FilesTestBase
 
         using var read = await svcHttp.GetAsync($"api/files/{recordId}", ct);
 
-        await Assert.That(read.StatusCode).IsEqualTo(HttpStatusCode.Unauthorized);
+        await Assert.That(read.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
     }
 
     // Helpers
@@ -357,7 +357,7 @@ public class RemoteServiceAuthTests : FilesTestBase
         if (targetUser is { } user)
         {
             graphqlHttp.DefaultRequestHeaders.Add(
-                RemoteServiceToken.ServiceIdentifierType,
+                RemoteServiceToken.ServiceImpersonatedUserHeader,
                 user.ToString()
             );
         }
@@ -440,7 +440,8 @@ public class RemoteServiceAuthTests : FilesTestBase
     private static byte[] RemoteServiceTokenHash(string serviceToken)
     {
         var apiToken = Base64Url.DecodeFromChars(
-            serviceToken.AsSpan()[(AuthUtils.RemoteServiceTokenPrefixName.Length + 1)..]);
+            serviceToken.AsSpan()[(AuthUtils.RemoteServiceTokenPrefixName.Length + 1)..]
+        );
         var tokenHash = new byte[32];
         BLAKE2b.ComputeHash(tokenHash, apiToken);
         return tokenHash;

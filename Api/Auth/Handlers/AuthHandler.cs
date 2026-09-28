@@ -44,13 +44,13 @@ class AuthHandler(
                     tokenHash.TokenHash
                 ),
 
-                AuthUtils.RemoteServiceTokenPrefixName => Context
-                    .Request.Headers[RemoteServiceToken.ServiceIdentifierType]
-                    .FirstOrDefault()
-                    ?.TryParseGuid()
-                    is { } id
-                    ? GetServiceIdentity(tokenHash.TokenHash, id)
-                    : Task.FromResult<ClaimsIdentity?>(null),
+                AuthUtils.RemoteServiceTokenPrefixName => GetServiceIdentity(
+                    tokenHash.TokenHash,
+                    Context
+                        .Request.Headers[RemoteServiceToken.ServiceImpersonatedUserHeader]
+                        .FirstOrDefault()
+                        ?.TryParseGuid()
+                ),
                 _ => Task.FromResult<ClaimsIdentity?>(null),
             }
         );
@@ -100,8 +100,7 @@ class AuthHandler(
     private async Task<ClaimsIdentity?> GetUserIdentityAsync(byte[] tokenHash)
     {
         var userToken = await db
-            .UserTokens.AsNoTracking()
-            .Where(ut => tokenHash.SequenceEqual(ut.TokenHash))
+            .UserTokens.Where(ut => tokenHash.SequenceEqual(ut.TokenHash))
             .FirstOrDefaultAsync();
 
         if (userToken is null)
@@ -125,7 +124,7 @@ class AuthHandler(
 
     private async Task<ClaimsIdentity?> GetServiceIdentity(
         byte[] tokenHash,
-        Guid targetUser
+        Guid? targetUser
     )
     {
         var serviceToken = await db
@@ -136,28 +135,48 @@ class AuthHandler(
 
         var userPermission = serviceToken?.RemoteService.UserPermissions.FirstOrDefault();
 
-        if (serviceToken is null || userPermission is null)
+        if (serviceToken is null)
         {
             return null;
         }
 
         AuthUtils.UpdateLastUsedTokens(serviceToken);
-        AuthUtils.UpdateLastUsedTokens(userPermission);
+
+        if (userPermission is not null)
+        {
+            AuthUtils.UpdateLastUsedTokens(userPermission);
+        }
 
         await db.SaveChangesAsync();
 
-        Claim[] claims =
+        List<Claim> claims =
         [
-            new Claim(ClaimTypes.NameIdentifier, userPermission.UserId.ToString()),
-            new Claim(
-                UserTokenEF.PermissionBitsType,
-                ((long)userPermission.Permissions).ToString()
-            ),
             new Claim(
                 RemoteServiceToken.ServiceIdentifierType,
                 serviceToken.RemoteServiceId.ToString()
             ),
         ];
+        if (serviceToken.RemoteService.AllowedJobs.Count != 0)
+        {
+            claims.Add(
+                new Claim(
+                    RemoteServiceToken.ServiceAllowedJobsType,
+                    serviceToken.RemoteService.AllowedJobs.Aggregate(
+                        (s1, s2) => $"{s1},{s2}"
+                    )
+                )
+            );
+        }
+        if (userPermission is not null)
+        {
+            claims.AddRange([
+                new Claim(ClaimTypes.NameIdentifier, userPermission.UserId.ToString()),
+                new Claim(
+                    UserTokenEF.PermissionBitsType,
+                    ((long)userPermission.Permissions).ToString()
+                ),
+            ]);
+        }
 
         return new ClaimsIdentity(claims, "service_token");
     }

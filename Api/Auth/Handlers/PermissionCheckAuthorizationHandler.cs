@@ -51,10 +51,13 @@ class PermissionCheckAuthorizationHandler
         var userPermissionBitsString = context.User.FindFirstValue(
             UserTokenEF.PermissionBitsType
         );
-        if (!long.TryParse(userPermissionBitsString, out long userPermissionBitsLong))
-        {
+
+        if (userPermissionBitsString is null)
             return Task.CompletedTask;
-        }
+
+        if (!long.TryParse(userPermissionBitsString, out long userPermissionBitsLong))
+            return Task.CompletedTask;
+
         var userPermissionBits = (UserPermissionBits)userPermissionBitsLong;
 
         if (
