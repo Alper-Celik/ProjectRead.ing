@@ -23,11 +23,16 @@ public record LeasePendingJobsPayload(ILeasedJob[] Jobs);
 public static partial class LeaseJobMutations
 {
     [Authorize(PermissionPolicyProvider.RemoteServicePolicyName)]
+    // TODO: remove once the Jobs slice is wired: there is no IJobsInterfae implementation and no
+    // object type implementing ILeasedJob yet, which breaks schema validation and the generated
+    // ZeroQL client. Re-add the [InterfaceType] attributes and validate the input explicitly
+    // (validator.ValidateOrThrowInputAsync) at that point.
+    [GraphQLIgnore]
     public static async Task<LeasePendingJobsPayload> LeasePendingJobs(
-        ICurrentServiceId idGetter,
-        IEFTransactionDIAccessorService tx,
-        IJobsInterfae jobsInterfae,
-        JobDTOBuilder j,
+        [Service] ICurrentServiceId idGetter,
+        [Service] IEFTransactionDIAccessorService tx,
+        [Service] IJobsInterfae jobsInterfae,
+        [Service] JobDTOBuilder j,
         LeasePendingJobsInput input,
         CancellationToken ct
     )

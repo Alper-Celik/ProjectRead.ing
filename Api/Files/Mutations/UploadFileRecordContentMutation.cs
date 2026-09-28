@@ -10,6 +10,7 @@ using Api.Database;
 using Api.Database.Utils;
 using Api.Files.FileProviders;
 using Api.Files.Queries;
+using Api.Utils;
 using FluentValidation;
 using HotChocolate.Types;
 using Microsoft.EntityFrameworkCore;
@@ -21,36 +22,42 @@ namespace Api.Files.Mutations;
 public static partial class UploadFileRecordContentMutations
 {
     [PermissionCheckAuthorize(UserPermissionBits.FileWrite)]
-    public static async Task<AddFileRecordPayload> UploadFileRecordContentMutation(
+    [Error(typeof(DomainError))]
+    public static async Task<UploadFileRecordContentPayload> UploadFileRecordContentAsync(
         [Service] ICurrentUserId userId,
         [Service] IEFTransactionDIAccessorService txGetter,
         [Service] UserFileRouter router,
+        [Service] IValidator<UploadFileRecordContentInput> validator,
         UploadFileRecordContentInput input,
         IFile file,
         CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync(ct);
 
-        var fileRecord =
-            await router.SetFileAsync(
-                userId.Id!.Value,
-                input.Id,
-                file.OpenReadStream(),
-                ct
-            )
-            ?? throw new GraphQLException(
-                ErrorBuilder
-                    .New()
-                    .SetMessage("File content did not match the declared size or SHA256")
-                    .SetCode(ErrorCodes.FILE_UPLOAD_FAILED)
-                    .Build()
+        var fileRecord = await router.SetFileAsync(
+            userId.Id!.Value,
+            input.Id,
+            file.OpenReadStream(),
+            ct
+        );
+
+        if (fileRecord is null)
+        {
+            throw new DomainException(
+                ErrorCodes.FILE_UPLOAD_FAILED,
+                "File content did not match the declared size or SHA256"
             );
+        }
 
         await tx.CommitAsync(ct);
-        return new AddFileRecordPayload(FileRecordMapper.ToDto(fileRecord));
+        return new UploadFileRecordContentPayload(FileRecordMapper.ToDto(fileRecord));
     }
 }
+
+public record UploadFileRecordContentPayload(Queries.FileRecord FileRecord);
 
 public record UploadFileRecordContentInput
 {

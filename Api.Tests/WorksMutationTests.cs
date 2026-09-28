@@ -13,6 +13,7 @@ using Npgsql;
 using ZeroQL;
 using ZeroQL.Client;
 using static Api.Utils.GeneralUtils;
+using ClientDomainError = ZeroQL.Client.DomainError;
 
 namespace Api.Tests;
 
@@ -108,7 +109,7 @@ public class WorksMutationTests : WorksTestBase
                 },
             },
             static (i, m) =>
-                m.UpdateAuthorMutation(
+                m.UpdateAuthor(
                     i.input,
                     p =>
                         p.Author(a => new
@@ -155,10 +156,13 @@ public class WorksMutationTests : WorksTestBase
                 },
             },
             static (i, m) =>
-                m.UpdateAuthorMutation(i.input, p => p.Author(a => a.DisplayName))
+                m.UpdateAuthor(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.ID_DOES_NOT_EXIST);
+        await AssertDomainErrorCode(result, ErrorCodes.ID_DOES_NOT_EXIST);
     }
 
     [Test]
@@ -178,10 +182,13 @@ public class WorksMutationTests : WorksTestBase
                 },
             },
             static (i, m) =>
-                m.UpdateAuthorMutation(i.input, p => p.Author(a => a.DisplayName))
+                m.UpdateAuthor(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.ROW_VERSION_MISMATCH);
+        await AssertDomainErrorCode(result, ErrorCodes.ROW_VERSION_MISMATCH);
     }
 
     [Test]
@@ -258,10 +265,8 @@ public class WorksMutationTests : WorksTestBase
                 "A tag with the same namespace and name already exists",
                 ct
             );
-        var exception = await Assert.That(act).Throws<GraphQLException>();
-        await Assert
-            .That(exception?.Errors.Single().Code)
-            .IsEqualTo("TAG_ALREADY_EXISTS");
+        var exception = await Assert.That(act).Throws<DomainException>();
+        await Assert.That(exception?.Code).IsEqualTo(ErrorCodes.TAG_ALREADY_EXISTS);
     }
 
     [Test]
@@ -279,10 +284,14 @@ public class WorksMutationTests : WorksTestBase
                     TagNamespace = ["genre", "sub"],
                 },
             },
-            static (i, m) => m.AddTagMutation(i.input, p => p.Tag(t => t.Id))
+            static (i, m) =>
+                m.AddTag(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.TAG_ALREADY_EXISTS);
+        await AssertDomainErrorCode(result, ErrorCodes.TAG_ALREADY_EXISTS);
     }
 
     [Test]
@@ -321,7 +330,7 @@ public class WorksMutationTests : WorksTestBase
                 },
             },
             static (i, m) =>
-                m.UpdateTagMutation(
+                m.UpdateTag(
                     i.input,
                     p =>
                         p.Tag(t => new
@@ -370,10 +379,14 @@ public class WorksMutationTests : WorksTestBase
                     TagNamespace = ["genre"],
                 },
             },
-            static (i, m) => m.UpdateTagMutation(i.input, p => p.Tag(t => t.TagName))
+            static (i, m) =>
+                m.UpdateTag(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.TAG_ALREADY_EXISTS);
+        await AssertDomainErrorCode(result, ErrorCodes.TAG_ALREADY_EXISTS);
     }
 
     [Test]
@@ -397,7 +410,7 @@ public class WorksMutationTests : WorksTestBase
                     TagNamespace = ["genre"],
                 },
             },
-            static (i, m) => m.UpdateTagMutation(i.input, p => p.Tag(t => t.TagName))
+            static (i, m) => m.UpdateTag(i.input, p => p.Tag(t => t.TagName))
         );
 
         await Assert.That(result.Errors).IsNull().Or.IsEmpty();
@@ -420,10 +433,14 @@ public class WorksMutationTests : WorksTestBase
                     TagNamespace = ["nope"],
                 },
             },
-            static (i, m) => m.UpdateTagMutation(i.input, p => p.Tag(t => t.TagName))
+            static (i, m) =>
+                m.UpdateTag(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.ID_DOES_NOT_EXIST);
+        await AssertDomainErrorCode(result, ErrorCodes.ID_DOES_NOT_EXIST);
     }
 
     [Test]
@@ -443,10 +460,14 @@ public class WorksMutationTests : WorksTestBase
                     TagNamespace = ["new"],
                 },
             },
-            static (i, m) => m.UpdateTagMutation(i.input, p => p.Tag(t => t.TagName))
+            static (i, m) =>
+                m.UpdateTag(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.ROW_VERSION_MISMATCH);
+        await AssertDomainErrorCode(result, ErrorCodes.ROW_VERSION_MISMATCH);
     }
 
     [Test]
@@ -540,10 +561,14 @@ public class WorksMutationTests : WorksTestBase
                     WorkIdentifiers = [],
                 },
             },
-            static (i, m) => m.AddWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.AddWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.IDS_DOES_NOT_EXIST);
+        await AssertDomainErrorCode(result, ErrorCodes.IDS_DOES_NOT_EXIST);
     }
 
     [Test]
@@ -562,10 +587,14 @@ public class WorksMutationTests : WorksTestBase
                     WorkIdentifiers = [],
                 },
             },
-            static (i, m) => m.AddWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.AddWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.IDS_DOES_NOT_EXIST);
+        await AssertDomainErrorCode(result, ErrorCodes.IDS_DOES_NOT_EXIST);
     }
 
     [Test]
@@ -585,10 +614,14 @@ public class WorksMutationTests : WorksTestBase
                     WorkIdentifiers = [],
                 },
             },
-            static (i, m) => m.AddWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.AddWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.IS_NOT_DISTINCT);
+        await AssertDomainErrorCode(result, ErrorCodes.IS_NOT_DISTINCT);
     }
 
     [Test]
@@ -608,10 +641,14 @@ public class WorksMutationTests : WorksTestBase
                     WorkIdentifiers = [],
                 },
             },
-            static (i, m) => m.AddWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.AddWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.IS_NOT_DISTINCT);
+        await AssertDomainErrorCode(result, ErrorCodes.IS_NOT_DISTINCT);
     }
 
     [Test]
@@ -687,7 +724,7 @@ public class WorksMutationTests : WorksTestBase
                 },
             },
             static (i, m) =>
-                m.UpdateWorkMutation(
+                m.UpdateWork(
                     i.input,
                     p =>
                         p.Work(w => new
@@ -787,7 +824,7 @@ public class WorksMutationTests : WorksTestBase
                 },
             },
             static (i, m) =>
-                m.UpdateWorkMutation(
+                m.UpdateWork(
                     i.input,
                     p =>
                         p.Work(w => new
@@ -830,10 +867,14 @@ public class WorksMutationTests : WorksTestBase
                     Title = "Nope",
                 },
             },
-            static (i, m) => m.UpdateWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.UpdateWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.ID_DOES_NOT_EXIST);
+        await AssertDomainErrorCode(result, ErrorCodes.ID_DOES_NOT_EXIST);
     }
 
     [Test]
@@ -852,10 +893,14 @@ public class WorksMutationTests : WorksTestBase
                     Title = "Nope",
                 },
             },
-            static (i, m) => m.UpdateWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.UpdateWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.ROW_VERSION_MISMATCH);
+        await AssertDomainErrorCode(result, ErrorCodes.ROW_VERSION_MISMATCH);
     }
 
     [Test]
@@ -875,10 +920,14 @@ public class WorksMutationTests : WorksTestBase
                     TagIds = [Guid.CreateVersion7()],
                 },
             },
-            static (i, m) => m.UpdateWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.UpdateWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.IDS_DOES_NOT_EXIST);
+        await AssertDomainErrorCode(result, ErrorCodes.IDS_DOES_NOT_EXIST);
     }
 
     [Test]
@@ -898,10 +947,14 @@ public class WorksMutationTests : WorksTestBase
                     AuthorIds = [Guid.CreateVersion7()],
                 },
             },
-            static (i, m) => m.UpdateWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.UpdateWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.IDS_DOES_NOT_EXIST);
+        await AssertDomainErrorCode(result, ErrorCodes.IDS_DOES_NOT_EXIST);
     }
 
     [Test]
@@ -922,10 +975,14 @@ public class WorksMutationTests : WorksTestBase
                     TagIds = [tagId, tagId],
                 },
             },
-            static (i, m) => m.UpdateWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.UpdateWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.IS_NOT_DISTINCT);
+        await AssertDomainErrorCode(result, ErrorCodes.IS_NOT_DISTINCT);
     }
 
     [Test]
@@ -946,10 +1003,14 @@ public class WorksMutationTests : WorksTestBase
                     AuthorIds = [authorId, authorId],
                 },
             },
-            static (i, m) => m.UpdateWorkMutation(i.input, p => p.Work(w => w.Id))
+            static (i, m) =>
+                m.UpdateWork(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.IS_NOT_DISTINCT);
+        await AssertDomainErrorCode(result, ErrorCodes.IS_NOT_DISTINCT);
     }
 }
 // Mostly Ai Generated - End

@@ -22,13 +22,17 @@ namespace Api.Works.Mutations;
 public static partial class UpdateTagMutations
 {
     [PermissionCheckAuthorize(UserPermissionBits.TagRead | UserPermissionBits.TagWrite)]
-    public static async Task<UpdateTagPayload> UpdateTagMutation(
+    [Error(typeof(DomainError))]
+    public static async Task<UpdateTagPayload> UpdateTagAsync(
         [Service] PGContext db,
         [Service] IEFTransactionDIAccessorService txGetter,
+        [Service] IValidator<UpdateTagInput> validator,
         UpdateTagInput input,
         CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync();
         var tag = await db.WorkTags.SingleAsync(
             t => t.Id == input.Id,

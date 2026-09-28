@@ -10,6 +10,7 @@ using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
 using Api.Database.Utils;
+using Api.Utils;
 using FluentValidation;
 using HotChocolate.Authorization;
 using NodaTime;
@@ -33,10 +34,13 @@ public static partial class LoginInstanceServiceMutations
         [Service] PGContext db,
         [Service] IEFTransactionDIAccessorService txAccessor,
         [Service] IConfiguration config,
+        [Service] IValidator<LoginInstanceServiceInput> validator,
         LoginInstanceServiceInput input,
         CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowAsync(input, ct);
+
         var proof = HKDF.DeriveKey(
             HashAlgorithmName.SHA256,
             Base64Url.DecodeFromChars(config["ProjectReadingSecretSeed"]),

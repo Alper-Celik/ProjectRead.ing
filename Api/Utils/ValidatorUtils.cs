@@ -5,6 +5,7 @@ using System.Data;
 using System.Linq.Expressions;
 using Api.Database.Utils;
 using FluentValidation;
+using HotChocolate;
 using Microsoft.EntityFrameworkCore;
 
 namespace Api.Utils;
@@ -107,5 +108,59 @@ public static class ValidatorUtils
                 $"Row version for `{nameof(TTarget)}` does not match with provided row version"
             )
             .WithErrorCode(ErrorCodes.ROW_VERSION_MISMATCH);
+    }
+
+    /// <summary>
+    /// Validates <paramref name="input"/>; throws an <see cref="DomainException"/> per failure
+    /// (as an <see cref="AggregateException"/> when there are several) so the mutation's
+    /// <c>[Error]</c> middleware reports them in the payload's <c>errors</c> list.
+    /// </summary>
+    public static async Task ValidateOrThrowInputAsync<T>(
+        this IValidator<T> validator,
+        T input,
+        CancellationToken ct = default
+    )
+    {
+        var result = await validator.ValidateAsync(input, ct);
+
+        if (result.IsValid)
+        {
+            return;
+        }
+
+        var failures = result
+            .Errors.Select(failure => new DomainException(
+                failure.ErrorCode,
+                failure.ErrorMessage
+            ))
+            .ToArray();
+
+        throw failures.Length is 1 ? failures[0] : new AggregateException(failures);
+    }
+
+    /// <summary>
+    /// Validates <paramref name="input"/>; throws a <see cref="GraphQLException"/> carrying the
+    /// failures when the input is invalid. Use for fields that have no payload to put errors in.
+    /// </summary>
+    public static async Task ValidateOrThrowAsync<T>(
+        this IValidator<T> validator,
+        T input,
+        CancellationToken ct = default
+    )
+    {
+        var result = await validator.ValidateAsync(input, ct);
+
+        if (!result.IsValid)
+        {
+            throw new GraphQLException([
+                .. result.Errors.Select(failure =>
+                    ErrorBuilder
+                        .New()
+                        .SetMessage(failure.ErrorMessage)
+                        .SetCode(failure.ErrorCode)
+                        .Build()
+                ),
+            ]);
+        }
     }
 }

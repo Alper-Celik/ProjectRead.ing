@@ -237,16 +237,6 @@
         "resolved": "7.0.0",
         "contentHash": "VYaSP2Kt+45GFnr3q7c/b4awT48VvueOJV4jPjdUXi5MxC9mSUy+HkJYtm8rGZ6fC3tNHG9gBu/YwNAR/FYqhg=="
       },
-      "Tirion.FairyBread": {
-        "type": "Direct",
-        "requested": "[13.2.0, )",
-        "resolved": "13.2.0",
-        "contentHash": "7TUKBoAQrEOCSVfOGVZyte1yvqRLAPJxnbcxeLzJrax09rKvPbqJKKZVlzlxH3ucj2BItSdI6lXC8qrNem3oHA==",
-        "dependencies": {
-          "FluentValidation": "12.1.1",
-          "HotChocolate.Types": "16.6.0"
-        }
-      },
       "ChilliCream.Nitro.App": {
         "type": "Transitive",
         "resolved": "32.0.2",

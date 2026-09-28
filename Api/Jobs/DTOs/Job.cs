@@ -13,7 +13,8 @@ public interface IJobType : IJob, ILeasedJob
     static abstract IJob CreateFrom(JobData data);
 }
 
-[InterfaceType("Job")]
+// TODO: re-add [InterfaceType("Job")] once the Jobs slice is wired — no object type implements
+// this interface yet, so schema validation (and the generated ZeroQL client) cannot handle it.
 public interface IJob : INode
 {
     [ID]
@@ -39,7 +40,6 @@ public interface IJob : INode
     public ILeasedJob AsLeased();
 }
 
-[InterfaceType("LeasedJob")]
 public interface ILeasedJob : IJob
 {
     public new Guid LatestLeaserId { get; set; }

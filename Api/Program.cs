@@ -6,6 +6,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using Api.Auth.Handlers;
 using Api.Database;
+using Api.Utils;
 using FluentValidation;
 using HotChocolate.Types.NodaTime;
 using Microsoft.AspNetCore.Authentication;
@@ -55,6 +56,7 @@ builder
     .AddSorting()
     .AddPagingArguments()
     .AddUploadType()
+    .AddMutationConventions(applyToAllMutations: false)
     .ModifyPagingOptions(opt =>
     {
         opt.MaxPageSize = 50;
@@ -64,10 +66,6 @@ builder
     .BindRuntimeType<Instant, HotChocolate.Types.NodaTime.DateTimeType>()
     .AddTypeConverter<Instant, OffsetDateTime>(t => t.InUtc().ToOffsetDateTime())
     .AddTypeConverter<OffsetDateTime, Instant>(t => t.ToInstant())
-    .AddFairyBread(
-        configureOptions: (opt) =>
-            opt.IncludeAttemptedValueInErrors = builder.Environment.IsDevelopment()
-    )
     .AddGlobalObjectIdentification(opt =>
     {
         opt.RegisterNodeInterface = true;

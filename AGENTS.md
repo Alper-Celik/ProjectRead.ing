@@ -42,7 +42,7 @@ Api/
 │   ├── PGContext.cs        # Main DbContext (partial)
 │   └── Utils/             # IEFTransactionDIAccessorService
 ├── Graphql/               # ErrorCodes, GuidNodeSerializer
-├── Utils/                 # ValidatorUtils, EntityMetadata, IdPostfixes, MapperUtils, GeneralUtils
+├── Utils/                 # ValidatorUtils, DomainError, EntityMetadata, IdPostfixes, MapperUtils, GeneralUtils
 ├── Works/
 │   ├── Models/            # EF entities: Work, WorkTag, Author, join entities
 │   ├── Mutations/         # Add/Update mutations
@@ -134,14 +134,18 @@ IdPostfixes enum: `User=0, Work=1, Author=2, WorkTag=3, FileRecord=4, FileProvid
 public static partial class AddXxxMutations
 {
     [PermissionCheckAuthorize(UserPermissionBits.XxxWrite)]
-    public static async Task<AddXxxPayload> AddXxxMutation(
+    [Error(typeof(DomainError))]
+    public static async Task<AddXxxPayload> AddXxxAsync(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
         [Service] IEFTransactionDIAccessorService txGetter,
+        [Service] IValidator<AddXxxInput> validator,
         CancellationToken ct,
         AddXxxInput input
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync();
         var entity = AddXxxInputMapper.CreateFromDto(input, userId.Id!.Value, Now());
         await db.AddAsync(entity, cancellationToken: ct);
@@ -189,13 +193,17 @@ public static partial class AddXxxInputMapper
 public static partial class UpdateXxxMutations
 {
     [PermissionCheckAuthorize(UserPermissionBits.XxxRead | UserPermissionBits.XxxWrite)]
-    public static async Task<UpdateXxxPayload> UpdateXxxMutation(
+    [Error(typeof(DomainError))]
+    public static async Task<UpdateXxxPayload> UpdateXxxAsync(
         [Service] PGContext db,
         [Service] IEFTransactionDIAccessorService txGetter,
+        [Service] IValidator<UpdateXxxInput> validator,
         UpdateXxxInput input,
         CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync();
         var entity = await db.Xxxs.SingleAsync(e => e.Id == input.Id, cancellationToken: ct);
 
@@ -396,12 +404,12 @@ happens inside `UserFileRouter.SetFileAsync`, not through the API.
   (`LocalFSFileProvider.SetFileAsync` rejects `totalBytesRead != sizeBytes` and hash mismatch;
   `totalBytesRead` is a `long` — an `int` wraps past 2 GiB and silently defeats both checks).
 - **Mutations** (three, sharing `AddFileRecordInput`, and no Mapperly input mapper — the
-  router builds the entity, don't duplicate construction): `addFileRecordMutation` (metadata
-  only), `addFileRecordWithFileMutation` (metadata + `Upload`; on failure it throws
-  `FILE_UPLOAD_FAILED` *before* `CommitAsync`, so the transaction removes the row — no
-  explicit delete, and LocalFS only `File.Move`s its temp file after the hash matches),
-  `uploadFileRecordContentMutation` (content for a reserved record; `ID_DOES_NOT_EXIST` /
-  `FILE_ALREADY_UPLOADED` via the input validator).
+  router builds the entity, don't duplicate construction): `addFileRecord` (metadata
+  only), `addFileRecordWithFile` (metadata + `Upload`; on failure it throws
+  `DomainException(FILE_UPLOAD_FAILED)` *before* `CommitAsync`, so the transaction removes the row
+  — no explicit delete, and LocalFS only `File.Move`s its temp file after the hash matches),
+  `uploadFileRecordContent` (content for a reserved record;
+  `ID_DOES_NOT_EXIST` / `FILE_ALREADY_UPLOADED` from the explicitly invoked input validator).
 - **`sha256` on the wire is lowercase hex**, exposed by a value resolver on `FileRecordNode`
   (`Convert.ToHexStringLower`) over a `[GraphQLIgnore] byte[]` DTO member. Never put the
   conversion inside `ProjectToDto` — Npgsql has no translator for `Convert.ToHexString*`, so
@@ -438,27 +446,35 @@ happens inside `UserFileRouter.SetFileAsync`, not through the API.
 - `IdMustExist(dbSet, ownerId?)` - single GUID must exist in DbSet
 - `RowVersionMustMatch(dbSet)` - row version must match (requires `T : IBasicEntityMetadata`)
 - `WhenOptionalSet(expr)` - apply rule only when `Optional<T>.HasValue` is true
+- `ValidateOrThrowInputAsync(input, ct)` - on `IValidator<T>`; throws a `DomainException` per
+  failure (`AggregateException` when there are several) that the mutation's `[Error]` middleware
+  reports in the payload's `errors` list
+- `ValidateOrThrowAsync(input, ct)` - on `IValidator<T>`; throws a `GraphQLException` carrying the
+  failures (each with its FluentValidation error code) for fields that have no payload, e.g. auth
 
-### Validator Lifetimes & the Shared Transaction (FairyBread)
+### Explicit Validation & the Shared Transaction
 
-Validators are registered by `AddValidatorsFromAssemblyContaining<Program>()` (scoped) and
-resolved by FairyBread from the **GraphQL request scope**. This is load-bearing:
+There is no validation middleware: validators are registered by
+`AddValidatorsFromAssemblyContaining<Program>()` (scoped), each mutation injects
+`IValidator<XxxInput>` and calls `ValidateInputAsync`/`ValidateOrThrowAsync` itself. That is
+load-bearing:
 
-- The validator and the mutation resolver therefore share the **same** `PGContext` and
-  `IEFTransactionDIAccessorService`. The first validator rule calls
+- The resolver and its validator resolve from the **same** DI scope, so they share the **same**
+  `PGContext` and `IEFTransactionDIAccessorService`. The validator's first rule calls
   `tx.BeginOrGetTransactionAsync()` so that validation reads (row version check, duplicate
   checks) and the mutation's `CommitAsync` are one unit.
-- **Never implement `IRequiresOwnScopeValidator` on these validators.** FairyBread then
-  resolves them in a fresh scope with a *different* `PGContext`, silently breaking the
-  shared-transaction pattern (it also churns an extra `DbContext` per validation). It was
-  removed from `AddWorkInputValidator` and `RegisterInputValidator` after a review.
+- Never register a validator so that it resolves in its own scope — a fresh scope means a
+  *different* `PGContext`, silently breaking the shared-transaction pattern.
+- Domain mutations report failures as payload data; auth mutations report them as GraphQL
+  errors (`ValidateOrThrowAsync`) because their clients switch on `extensions.code`.
 
 ### Key Libraries
 
 - **HotChocolate** - GraphQL server (provides `Optional<T>`, `[Node]`, `[QueryType]`, `[MutationType]`, etc.)
 - **Riok.Mapperly** - compile-time object mapper (`[Mapper]`, `[MapperIgnoreTarget]`, `[MapperIgnoreSource]`)
 - **FluentValidation** - input validation (`AbstractValidator<T>`)
-- **FairyBread** - automatic input validation for HotChocolate
+- **SharpGrip.FluentValidation.AutoValidation** - validation for REST endpoints; GraphQL fields
+  validate explicitly (see "Explicit Validation & the Shared Transaction")
 - **NodaTime** - date/time handling (`Instant`, `ZonedDateTime`)
 - **Entity Framework Core** - ORM with PostgreSQL
 - **GreenDonut** - data loader library for HotChocolate
@@ -498,24 +514,40 @@ public DbSet<FileProviderBackendConfig> FileProviderBackendConfigs { get; set; }
 - Query class names use `Query`
 - All mutations use transactions via `IEFTransactionDIAccessorService`; validators call
   `RuleFor(...).BeginTransaction(tx)` as their first rule so validation reads and the
-  mutation's `CommitAsync` are one unit (see "Validator Lifetimes & the Shared Transaction")
+  mutation's `CommitAsync` are one unit (see "Explicit Validation & the Shared Transaction")
+- Mutations report expected failures as data through HotChocolate's mutation conventions:
+  `[Error(typeof(DomainError))]`. The convention adds `errors: [XxxError!]` (a union whose only
+  member is `DomainError`, with `message`/`code`) and forces the data field nullable, so a failure
+  returns `null` data + payload errors while `errors[]` stays empty. The names are derived from the
+  field name (see the naming bullet in the conventions), so the resolver must be named
+  `<Name>Async`; only mutations whose input type name deviates from that pattern need
+  `[UseMutationConvention(InputTypeName = "...")]`. A payload type cannot be shared by two
+  `[Error]` mutations (each adds its own `errors` field). Auth mutations (`registerMutation`,
+  `loginMutation`, `loginTheInstanceService`) keep GraphQL errors and keep their `*Mutation` field
+  names.
+- Payload errors are unions, so they need an inline fragment on the wire:
+  `errors { ... on DomainError { code } }`; in tests
+  `p => p.Errors(e => e.On<ZeroQL.Client.DomainError>().Select(x => x.Code))`.
 - Navigation properties on EF models should have `[MapperIgnore]` or be ignored in mapper with `[MapperIgnoreTarget]`/`[MapperIgnoreSource]`
 - Tag uniqueness is guarded three ways: friendly `TAG_ALREADY_EXISTS` FluentValidation
   checks (Add/UpdateTag), the DB unique index on `(OwnerId, TagNamespace, TagName)`
   (`Api/Works/Models/WorkTag.cs`), and `db.SaveChangesOrThrowAsync(sqlState, code, message, ct)`
   (`Api/Utils/DbExceptionUtils.cs`) which maps a PG error with that `SqlState` at
-  `SaveChangesAsync` to a `GraphQLException` with that code (`SetCode`, i.e. `extensions.code`)
-  and message — the catch covers the validator's check-then-insert race under READ COMMITTED.
-  Use this helper (not a naked `SaveChangesAsync`) when a mutation writes a row guarded by a
-  unique index; pass a `null` `sqlState` to match any PostgreSQL error.
+  `SaveChangesAsync` to a `DomainException` reported by the mutation's `[Error]` middleware —
+  the catch covers the validator's check-then-insert race under READ COMMITTED. Use this helper (not a naked `SaveChangesAsync`) when a mutation writes
+  a row guarded by a unique index; pass a `null` `sqlState` to match any PostgreSQL error.
 - GraphQL cost model: `Filtering`/`Sorting` `VariableMultiplier = 1` and `MaxFieldCost`/
   `MaxTypeCost = 20_000` are REQUIRED for nested connection filtering (`Tag.works(where:)`,
   `Author.works(where:)`) — the defaults plus a 5k cap rejected such queries with `HC0047`.
   Real depth guards are `MaxPageSize = 50` + `RequirePagingBoundaries = true`.
 - HotChocolate/GreenDonut are pinned to prerelease `16.7.0-p.5` for the `[DataLoaderModule]`
   source-generated modules — track releases and bump to stable when available.
-- A GraphQL field-name gotcha: HotChocolate strips only the `Async` suffix, so
-  `UpdateWorkMutation` becomes `updateWorkMutation` (NOT `updateWork`).
+- Mutation resolvers are named `<Name>Async` so the graphql field is `<name>`: HotChocolate
+  strips only the `Async` suffix, so `UpdateWorkMutation` would become `updateWorkMutation`
+  (NOT `updateWork`). The mutation conventions then derive the input/payload/error names from
+  that field name (`updateWork` -> `UpdateWorkInput`/`UpdateWorkPayload`/`UpdateWorkError`), which
+  is why a resolver that takes a differently named input type (e.g. `addFileRecordWithFile`
+  sharing `AddFileRecordInput`) needs `[UseMutationConvention(InputTypeName = "...")]`.
 - REST endpoints live in `Api/<Slice>/Endpoints/`, one static handler per file, with the
   auth policy and `[RequestFormLimits]` as attributes on the handler function (see the
   Files Slice section for why attribute-on-handler works)
