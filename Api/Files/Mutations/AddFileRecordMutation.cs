@@ -10,7 +10,7 @@ using Api.Database;
 using Api.Database.Utils;
 using Api.Files.FileProviders;
 using Api.Files.Queries;
-using FairyBread;
+using Api.Utils;
 using FluentValidation;
 using static Api.Utils.ValidatorUtils;
 
@@ -20,14 +20,18 @@ namespace Api.Files.Mutations;
 public static partial class AddFileRecordMutations
 {
     [PermissionCheckAuthorize(UserPermissionBits.FileWrite)]
-    public static async Task<AddFileRecordPayload> AddFileRecordMutation(
+    [Error(typeof(DomainError))]
+    public static async Task<AddFileRecordPayload> AddFileRecordAsync(
         [Service] ICurrentUserId userId,
         [Service] IEFTransactionDIAccessorService txGetter,
         [Service] UserFileRouter router,
+        [Service] IValidator<AddFileRecordInput> validator,
         AddFileRecordInput input,
         CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync(ct);
 
         var fileRecord = await router.CreateFileAsync(

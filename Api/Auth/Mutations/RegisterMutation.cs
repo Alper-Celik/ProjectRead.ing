@@ -30,9 +30,13 @@ public static partial class RegisterMutations
     public static async Task<LoginPayload> RegisterMutation(
         [Service] PGContext db,
         [Service] IEFTransactionDIAccessorService txAccessor,
-        RegisterInput input
+        [Service] IValidator<RegisterInput> validator,
+        RegisterInput input,
+        CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowAsync(input, ct);
+
         var tx = await txAccessor.BeginOrGetTransactionAsync();
 
         var password_bytes = Encoding.UTF8.GetBytes(input.Password.Normalize());

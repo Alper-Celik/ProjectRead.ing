@@ -8,7 +8,6 @@ using Api.Database.Utils;
 using Api.Utils;
 using Api.Works.Models;
 using Api.Works.Queries;
-using FairyBread;
 using FluentValidation;
 using NodaTime;
 using Riok.Mapperly.Abstractions;
@@ -20,14 +19,18 @@ namespace Api.Works.Mutations;
 public static partial class AddWorkMutations
 {
     [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkWrite)]
-    public static async Task<AddWorkPayload> AddWorkMutation(
+    [Error(typeof(DomainError))]
+    public static async Task<AddWorkPayload> AddWorkAsync(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
         [Service] IEFTransactionDIAccessorService txGetter,
-        CancellationToken ct,
-        AddWorkInput input
+        [Service] IValidator<AddWorkInput> validator,
+        AddWorkInput input,
+        CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync();
 
         var work = AddWorkInputMapper.CreateFromDto(input, userId.Id!.Value, Now());

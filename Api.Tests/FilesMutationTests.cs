@@ -7,6 +7,7 @@ using System.Net;
 using System.Threading.Tasks;
 using ZeroQL;
 using ZeroQL.Client;
+using ClientDomainError = ZeroQL.Client.DomainError;
 
 namespace Api.Tests;
 
@@ -53,10 +54,13 @@ public class FilesMutationTests : FilesTestBase
         var result = await client.Mutation(
             new { input = FileRecordInput(sha256: new string('a', 63)) },
             static (i, m) =>
-                m.AddFileRecordMutation(i.input, p => p.FileRecord(f => f.Id))
+                m.AddFileRecord(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
         );
 
-        await AssertErrorCode(result, ErrorCodes.INVALID_SHA256);
+        await AssertDomainErrorCode(result, ErrorCodes.INVALID_SHA256);
     }
 
     [Test]
@@ -73,7 +77,7 @@ public class FilesMutationTests : FilesTestBase
                 file = UploadOf(SampleContent, "from-upload.epub"),
             },
             static (i, m) =>
-                m.AddFileRecordWithFileMutation(
+                m.AddFileRecordWithFile(
                     i.input,
                     i.file,
                     p => p.FileRecord(f => new { f.Id, f.Uploaded })
@@ -106,14 +110,14 @@ public class FilesMutationTests : FilesTestBase
                 file = UploadOf(SampleContent),
             },
             static (i, m) =>
-                m.AddFileRecordWithFileMutation(
+                m.AddFileRecordWithFile(
                     i.input,
                     i.file,
-                    p => p.FileRecord(f => f.Id)
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
                 )
         );
 
-        await AssertErrorCode(result, ErrorCodes.FILE_UPLOAD_FAILED);
+        await AssertDomainErrorCode(result, ErrorCodes.FILE_UPLOAD_FAILED);
 
         var remaining = await client.Query(q =>
             q.FileRecords(
@@ -146,7 +150,7 @@ public class FilesMutationTests : FilesTestBase
                 file = UploadOf(SampleContent),
             },
             static (i, m) =>
-                m.UploadFileRecordContentMutation(
+                m.UploadFileRecordContent(
                     i.input,
                     i.file,
                     p =>
@@ -186,11 +190,7 @@ public class FilesMutationTests : FilesTestBase
                 file = UploadOf(SampleContent),
             },
             static (i, m) =>
-                m.UploadFileRecordContentMutation(
-                    i.input,
-                    i.file,
-                    p => p.FileRecord(f => f.Id)
-                )
+                m.UploadFileRecordContent(i.input, i.file, p => p.FileRecord(f => f.Id))
         );
         await Assert.That(first.Errors).IsNull().Or.IsEmpty();
 
@@ -201,14 +201,14 @@ public class FilesMutationTests : FilesTestBase
                 file = UploadOf(SampleContent),
             },
             static (i, m) =>
-                m.UploadFileRecordContentMutation(
+                m.UploadFileRecordContent(
                     i.input,
                     i.file,
-                    p => p.FileRecord(f => f.Id)
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
                 )
         );
 
-        await AssertErrorCode(second, ErrorCodes.FILE_ALREADY_UPLOADED);
+        await AssertDomainErrorCode(second, ErrorCodes.FILE_ALREADY_UPLOADED);
     }
 
     [Test]
@@ -224,14 +224,14 @@ public class FilesMutationTests : FilesTestBase
                 file = UploadOf(SampleContent),
             },
             static (i, m) =>
-                m.UploadFileRecordContentMutation(
+                m.UploadFileRecordContent(
                     i.input,
                     i.file,
-                    p => p.FileRecord(f => f.Id)
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
                 )
         );
 
-        await AssertErrorCode(result, ErrorCodes.ID_DOES_NOT_EXIST);
+        await AssertDomainErrorCode(result, ErrorCodes.ID_DOES_NOT_EXIST);
     }
 }
 // Mostly Ai Generated - End

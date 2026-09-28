@@ -11,7 +11,6 @@ using Api.Database.Utils;
 using Api.Utils;
 using Api.Works.Models;
 using Api.Works.Queries;
-using FairyBread;
 using FluentValidation;
 using NodaTime;
 using Riok.Mapperly.Abstractions;
@@ -22,7 +21,7 @@ namespace Api.Works.Mutations;
 public static partial class AddAuthorMutations
 {
     [PermissionCheckAuthorize(UserPermissionBits.AuthorWrite)]
-    public static async Task<AddAuthorPayload> AddAuthorMutation(
+    public static async Task<AddAuthorPayload> AddAuthorAsync(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
         [Service] IEFTransactionDIAccessorService txGetter,

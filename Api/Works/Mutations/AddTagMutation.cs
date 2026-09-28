@@ -22,14 +22,18 @@ namespace Api.Works.Mutations;
 public static partial class AddTagMutations
 {
     [PermissionCheckAuthorize(UserPermissionBits.TagWrite)]
-    public static async Task<AddTagPayload> AddTagMutation(
+    [Error(typeof(DomainError))]
+    public static async Task<AddTagPayload> AddTagAsync(
         [Service] PGContext db,
         [Service] ICurrentUserId userId,
         [Service] IEFTransactionDIAccessorService txGetter,
+        [Service] IValidator<AddTagInput> validator,
         AddTagInput input,
         CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync();
 
         var tag = AddTagInputMapper.CreateFromDto(input, userId.Id!.Value, Now());

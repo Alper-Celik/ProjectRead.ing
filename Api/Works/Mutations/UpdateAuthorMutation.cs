@@ -21,13 +21,17 @@ public static partial class UpdateAuthorMutations
     [PermissionCheckAuthorize(
         UserPermissionBits.AuthorRead | UserPermissionBits.AuthorWrite
     )]
-    public static async Task<UpdateAuthorPayload> UpdateAuthorMutation(
+    [Error(typeof(DomainError))]
+    public static async Task<UpdateAuthorPayload> UpdateAuthorAsync(
         [Service] PGContext db,
         [Service] IEFTransactionDIAccessorService txGetter,
+        [Service] IValidator<UpdateAuthorInput> validator,
         UpdateAuthorInput input,
         CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync();
         var author = await db.Authors.SingleAsync(
             a => a.Id == input.Id,

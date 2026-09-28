@@ -53,8 +53,7 @@ public abstract class FilesTestBase : WorksTestBase
     {
         var result = await client.Mutation(
             new { input },
-            static (i, m) =>
-                m.AddFileRecordMutation(i.input, p => p.FileRecord(f => f.Id))
+            static (i, m) => m.AddFileRecord(i.input, p => p.FileRecord(f => f.Id))
         );
         await Assert.That(result.Errors).IsNull().Or.IsEmpty();
         return NodeIdToGuid(result.Data!);

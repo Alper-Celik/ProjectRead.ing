@@ -9,6 +9,8 @@ using Api.Auth.Utils;
 using Api.Database.Utils;
 using Api.Files.FileProviders;
 using Api.Files.Queries;
+using Api.Utils;
+using FluentValidation;
 using HotChocolate.Types;
 
 namespace Api.Files.Mutations;
@@ -17,15 +19,21 @@ namespace Api.Files.Mutations;
 public static partial class AddFileRecordWithFileMutations
 {
     [PermissionCheckAuthorize(UserPermissionBits.FileWrite)]
-    public static async Task<AddFileRecordPayload> AddFileRecordWithFileMutation(
+    [Error(typeof(DomainError))]
+    // The input type is shared with `addFileRecord`, so it cannot follow the derived name.
+    [UseMutationConvention(InputTypeName = "AddFileRecordInput")]
+    public static async Task<AddFileRecordWithFilePayload> AddFileRecordWithFileAsync(
         [Service] ICurrentUserId userId,
         [Service] IEFTransactionDIAccessorService txGetter,
         [Service] UserFileRouter router,
+        [Service] IValidator<AddFileRecordInput> validator,
         AddFileRecordInput input,
         IFile file,
         CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync(ct);
         var ownerId = userId.Id!.Value;
 
@@ -44,17 +52,16 @@ public static partial class AddFileRecordWithFileMutations
             is null
         )
         {
-            throw new GraphQLException(
-                ErrorBuilder
-                    .New()
-                    .SetMessage("File content did not match the declared size or SHA256")
-                    .SetCode(ErrorCodes.FILE_UPLOAD_FAILED)
-                    .Build()
+            throw new DomainException(
+                ErrorCodes.FILE_UPLOAD_FAILED,
+                "File content did not match the declared size or SHA256"
             );
         }
 
         await tx.CommitAsync(ct);
-        return new AddFileRecordPayload(FileRecordMapper.ToDto(fileRecord));
+        return new AddFileRecordWithFilePayload(FileRecordMapper.ToDto(fileRecord));
     }
 }
+
+public record AddFileRecordWithFilePayload(Queries.FileRecord FileRecord);
 // Mostly Ai Generated - End

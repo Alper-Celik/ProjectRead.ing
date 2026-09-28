@@ -20,13 +20,17 @@ namespace Api.Works.Mutations;
 public static partial class UpdateWorkMutations
 {
     [PermissionCheckAuthorize(UserPermissionBits.WorkRead | UserPermissionBits.WorkWrite)]
-    public static async Task<UpdateWorkPayload> UpdateWorkMutation(
+    [Error(typeof(DomainError))]
+    public static async Task<UpdateWorkPayload> UpdateWorkAsync(
         [Service] PGContext db,
         [Service] IEFTransactionDIAccessorService txGetter,
+        [Service] IValidator<UpdateWorkInput> validator,
         UpdateWorkInput input,
         CancellationToken ct
     )
     {
+        await validator.ValidateOrThrowInputAsync(input, ct);
+
         var tx = await txGetter.BeginOrGetTransactionAsync();
         var work = await db
             .Works.Include(w => w.WorkTag_Works)

@@ -92,6 +92,22 @@ public abstract class WorksTestBase : TestInit
         await Assert.That(found).IsTrue();
     }
 
+    /// <summary>
+    /// Asserts that a mutation reported <paramref name="code"/> as a payload error, i.e. via
+    /// the payload's <c>errors</c> field and not through the GraphQL <c>errors</c> array.
+    /// Select the errors with
+    /// <c>p => p.Errors(e => e.On&lt;ZeroQL.Client.DomainError&gt;().Select(x => x.Code))</c>.
+    /// </summary>
+    protected static async Task AssertDomainErrorCode(
+        GraphQLResult<string[]> result,
+        string code
+    )
+    {
+        await Assert.That(result.Errors).IsNull().Or.IsEmpty();
+        await Assert.That(result.Data).IsNotNull();
+        await Assert.That(result.Data!).Contains(code);
+    }
+
     protected static async Task<(Guid Id, int RowVersion)> AddAuthor(
         ApiClient client,
         string displayName = "Test Author",
@@ -112,10 +128,7 @@ public abstract class WorksTestBase : TestInit
                 },
             },
             static (i, m) =>
-                m.AddAuthorMutation(
-                    i.input,
-                    p => p.Author(a => new { a.Id, a.RowVersion })
-                )
+                m.AddAuthor(i.input, p => p.Author(a => new { a.Id, a.RowVersion }))
         );
         await Assert.That(result.Errors).IsNull().Or.IsEmpty();
         return (NodeIdToGuid(result.Data!.Id), result.Data.RowVersion);
@@ -137,7 +150,7 @@ public abstract class WorksTestBase : TestInit
                 },
             },
             static (i, m) =>
-                m.AddTagMutation(i.input, p => p.Tag(t => new { t.Id, t.RowVersion }))
+                m.AddTag(i.input, p => p.Tag(t => new { t.Id, t.RowVersion }))
         );
         await Assert.That(result.Errors).IsNull().Or.IsEmpty();
         return (NodeIdToGuid(result.Data!.Id), result.Data.RowVersion);
@@ -169,7 +182,7 @@ public abstract class WorksTestBase : TestInit
                 },
             },
             static (i, m) =>
-                m.AddWorkMutation(i.input, p => p.Work(w => new { w.Id, w.RowVersion }))
+                m.AddWork(i.input, p => p.Work(w => new { w.Id, w.RowVersion }))
         );
         await Assert.That(result.Errors).IsNull().Or.IsEmpty();
         return (NodeIdToGuid(result.Data!.Id), result.Data.RowVersion);

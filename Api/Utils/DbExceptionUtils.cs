@@ -13,7 +13,7 @@ public static class DbExceptionUtils
     /// <summary>
     /// Saves changes; when PostgreSQL reports an error with <paramref name="sqlState"/>
     /// (<see langword="null"/> matches any PostgreSQL error), throws a
-    /// <see cref="GraphQLException"/> tagged with <paramref name="code"/>/<paramref name="message"/>
+    /// <see cref="DomainException"/> tagged with <paramref name="code"/>/<paramref name="message"/>
     /// instead of the raw database error.
     /// </summary>
     public static async Task SaveChangesOrThrowAsync(
@@ -35,9 +35,7 @@ public static class DbExceptionUtils
                 throw;
             }
 
-            throw new GraphQLException(
-                ErrorBuilder.New().SetMessage(message).SetCode(code).Build()
-            );
+            throw new DomainException(code, message);
         }
     }
 
