@@ -6,6 +6,7 @@
 using System.Buffers.Text;
 using System.Net;
 using System.Net.Http.Headers;
+using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -14,12 +15,14 @@ using Api.Auth.Utils;
 using Api.Database;
 using Api.Utils;
 using Geralt;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NodaTime;
 using ZeroQL;
 using ZeroQL.Client;
+using IAuthenticationService = Microsoft.AspNetCore.Authentication.IAuthenticationService;
 
 namespace Api.Tests;
 
@@ -34,6 +37,10 @@ public class RemoteServiceAuthTests : FilesTestBase
     // must be valid Base64Url; hex chars are a subset of the Base64Url alphabet
     private const string Seed =
         "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
+
+    // scheme registered in Program.cs:
+    // AddScheme<AuthenticationSchemeOptions, AuthHandler>("ProjectReading", null)
+    private const string AuthenticateScheme = "ProjectReading";
 
     protected override void ConfigureTestConfiguration(IConfigurationBuilder config)
     {
@@ -245,6 +252,47 @@ public class RemoteServiceAuthTests : FilesTestBase
         await Assert.That(me.Errors).IsNotNull().And.IsNotEmpty();
     }
 
+    [Test]
+    public async Task ServiceToken_WithoutImpersonatedUserHeader_AuthenticatesAsService()
+    {
+        var principal = await Authenticate(await MintServiceToken());
+
+        await Assert
+            .That(principal.FindFirst(RemoteServiceToken.ServiceIdentifierType)?.Value)
+            .IsEqualTo(RemoteService.TheInstanceServiceId.ToString());
+        await Assert.That(principal.FindFirst(ClaimTypes.NameIdentifier)).IsNull();
+        await Assert.That(principal.FindFirst(UserTokenEF.PermissionBitsType)).IsNull();
+        await Assert
+            .That(principal.FindFirst(RemoteServiceToken.ServiceAllowedJobsType))
+            .IsNull();
+    }
+
+    [Test]
+    public async Task ServiceToken_WithUnparsableImpersonatedUserHeader_AuthenticatesAsService()
+    {
+        var principal = await Authenticate(await MintServiceToken(), "not-a-guid");
+
+        await Assert
+            .That(principal.FindFirst(RemoteServiceToken.ServiceIdentifierType)?.Value)
+            .IsEqualTo(RemoteService.TheInstanceServiceId.ToString());
+        await Assert.That(principal.FindFirst(ClaimTypes.NameIdentifier)).IsNull();
+    }
+
+    [Test]
+    public async Task ServiceToken_WithAllowedJobs_EmitsCommaJoinedAllowedJobsClaim()
+    {
+        var service = await AddRemoteService(
+            "jobs service",
+            ["jobs.reindex", "jobs.cleanup"]
+        );
+
+        var principal = await Authenticate(await MintServiceToken(service.Id));
+
+        await Assert
+            .That(principal.FindFirst(RemoteServiceToken.ServiceAllowedJobsType)?.Value)
+            .IsEqualTo("jobs.reindex,jobs.cleanup");
+    }
+
     // REST endpoints through a delegated identity
 
     [Test]
@@ -283,7 +331,7 @@ public class RemoteServiceAuthTests : FilesTestBase
     }
 
     [Test]
-    public async Task ServiceToken_RestFilesEndpoint_WithoutGrant_ReturnsUnauthorized(
+    public async Task ServiceToken_RestFilesEndpoint_WithoutGrant_ReturnsForbidden(
         CancellationToken ct
     )
     {
@@ -297,8 +345,28 @@ public class RemoteServiceAuthTests : FilesTestBase
             serviceToken
         );
         svcHttp.DefaultRequestHeaders.Add(
-            RemoteServiceToken.ServiceIdentifierType,
+            RemoteServiceToken.ServiceImpersonatedUserHeader,
             userId.ToString()
+        );
+
+        using var read = await svcHttp.GetAsync($"api/files/{recordId}", ct);
+
+        await Assert.That(read.StatusCode).IsEqualTo(HttpStatusCode.Forbidden);
+    }
+
+    [Test]
+    public async Task ServiceToken_RestFilesEndpoint_WithoutImpersonatedUserHeader_ReturnsForbidden(
+        CancellationToken ct
+    )
+    {
+        var (userClient, _, userId) = await RegisterUser("svc_rest_no_impersonation");
+        await GrantServiceUser(userId, UserPermissionBits.All);
+        var recordId = await AddFileRecordAsync(userClient, FileRecordInput());
+
+        var svcHttp = Factory.CreateClient();
+        svcHttp.DefaultRequestHeaders.TryAddWithoutValidation(
+            "Authorization",
+            await MintServiceToken()
         );
 
         using var read = await svcHttp.GetAsync($"api/files/{recordId}", ct);
@@ -364,16 +432,64 @@ public class RemoteServiceAuthTests : FilesTestBase
         return new ApiClient(graphqlHttp);
     }
 
-    private async Task<string> MintServiceToken()
+    private Task<string> MintServiceToken() =>
+        MintServiceToken(RemoteService.TheInstanceServiceId);
+
+    private async Task<string> MintServiceToken(Guid serviceId)
     {
         await using var scope = Factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<PGContext>();
-        string token = await AuthUtils.CreateRemoteServiceSession(
-            RemoteService.TheInstanceServiceId,
-            db
-        );
+        string token = await AuthUtils.CreateRemoteServiceSession(serviceId, db);
         await db.SaveChangesAsync();
         return token;
+    }
+
+    /// <summary>
+    /// Runs the real authentication scheme (<see cref="AuthenticateScheme"/>) over
+    /// <paramref name="serviceToken"/> and returns the resulting principal.
+    /// </summary>
+    private async Task<ClaimsPrincipal> Authenticate(
+        string serviceToken,
+        string? impersonatedUser = null
+    )
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var context = new DefaultHttpContext { RequestServices = scope.ServiceProvider };
+        context.Request.Headers.Authorization = serviceToken;
+        if (impersonatedUser is not null)
+        {
+            context.Request.Headers[RemoteServiceToken.ServiceImpersonatedUserHeader] =
+                impersonatedUser;
+        }
+
+        var result = await scope
+            .ServiceProvider.GetRequiredService<IAuthenticationService>()
+            .AuthenticateAsync(context, AuthenticateScheme);
+
+        await Assert.That(result.Succeeded).IsTrue();
+        return result.Principal!;
+    }
+
+    private async Task<RemoteService> AddRemoteService(
+        string name,
+        List<string> allowedJobs
+    )
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<PGContext>();
+        var now = GeneralUtils.Now();
+        var service = new RemoteService
+        {
+            Id = Guid.CreateVersion7().WithPostfix(RemoteService.IdPostfix),
+            Name = name,
+            AllowedJobs = allowedJobs,
+            DefaultInstanceWidePermisssion = UserPermissionBits.All,
+            MetadataAddedAt = now,
+            MetadataUpdatedAt = now,
+        };
+        db.RemoteServices.Add(service);
+        await db.SaveChangesAsync();
+        return service;
     }
 
     private async Task GrantServiceUser(Guid userId, UserPermissionBits permissions)

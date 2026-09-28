@@ -2,7 +2,15 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+using System.Buffers.Text;
+using System.Net.Http.Headers;
 using System.Threading.Tasks;
+using Api.Auth.Utils;
+using Api.Database;
+using Geralt;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
+using NodaTime;
 using ZeroQL;
 using ZeroQL.Client;
 
@@ -74,6 +82,65 @@ public class AuthTests : TestInit
             result.HttpResponseMessage.EnsureSuccessStatusCode();
             await Assert.That(result.Errors).IsNull().Or.IsEmpty();
         }
+    }
+
+    // Mostly Ai Generated - End
+
+    // Mostly Ai Generated - Start
+    [Test]
+    public async Task AuthenticatingWithUserToken_UpdatesLastUsedTimestamp(
+        CancellationToken ct
+    )
+    {
+        var http = Factory.CreateClient();
+        http.BaseAddress = new Uri(http.BaseAddress!.AbsoluteUri + "graphql/");
+        var client = new ApiClient(http);
+
+        var registered = await client.Mutation(
+            new
+            {
+                input = new RegisterInput()
+                {
+                    AdminRegistration = false,
+                    Email = "last_used@projectread.ing",
+                    Password = "correct horse battery staple",
+                },
+            },
+            static (i, m) => m.RegisterMutation(i.input, p => p.Token)
+        );
+        await Assert.That(registered.Errors).IsNull().Or.IsEmpty();
+        http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            registered.Data!
+        );
+
+        var tokenHash = UserTokenHash(registered.Data!);
+        await Assert.That(await LastUsedOf(tokenHash, ct)).IsNull();
+
+        var me = await client.Query(q => q.CurrentUser(u => new { u.Email }));
+        await Assert.That(me.Errors).IsNull().Or.IsEmpty();
+
+        await Assert.That(await LastUsedOf(tokenHash, ct)).IsNotNull();
+    }
+
+    private static byte[] UserTokenHash(string userToken)
+    {
+        var apiToken = Base64Url.DecodeFromChars(
+            userToken.AsSpan()[(AuthUtils.UserTokenPrefixName.Length + 1)..]
+        );
+        var tokenHash = new byte[32];
+        BLAKE2b.ComputeHash(tokenHash, apiToken);
+        return tokenHash;
+    }
+
+    private async Task<Instant?> LastUsedOf(byte[] tokenHash, CancellationToken ct)
+    {
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetRequiredService<PGContext>();
+        return (
+            await db
+                .UserTokens.AsNoTracking()
+                .SingleAsync(t => t.TokenHash.SequenceEqual(tokenHash), ct)
+        ).LastUsed;
     }
 
     // Mostly Ai Generated - End
