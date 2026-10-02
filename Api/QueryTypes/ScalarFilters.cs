@@ -2,12 +2,19 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
-using System.Linq.Expressions;
 using NodaTime;
 
 namespace Api.QueryTypes;
 
 [OneOf]
-public record GuidFilter(EqFilter<Guid> Eq);
+public record GuidFilter() : OneOfFilter<Guid>
+{
+    public EqFilter<Guid>? Eq
+    {
+        get { return (EqFilter<Guid>?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+}
 
-// public class ITimeFilter(
+[OneOf]
+public record ITimeFilter : ComperessionFilter<Instant>;

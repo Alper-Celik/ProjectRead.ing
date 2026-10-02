@@ -9,35 +9,42 @@ using System.Text.Json.Serialization;
 namespace Api.QueryTypes;
 
 [OneOf]
-public record ComperessionFilter<T>(
-    EqFilter<T>? Eq,
-    GtFilter<T>? Gt,
-    GteFilter<T>? Gte,
-    LtFilter<T>? Lt,
-    LteFilter<T>? Lte
-) : OneOfFilter<T>
+public record ComperessionFilter<T>() : OneOfFilter<T>
     where T : IComparisonOperators<T, T, bool>
 {
-    public override Expression<Func<T, bool>> Filter =>
-        throw new NotImplementedException();
-
-    protected new virtual Expression<Func<T, bool>> GetFilter()
+    public EqFilter<T>? Eq
     {
-        return (
-                (
-                    OneOfFilterSetup.FilterProperties?[GetType()]?[
-                        SelectedProperty
-                    ].GetValue(this)
-                ) as IFilter<T>
-            )?.Filter
-            ?? base.GetFilter();
+        get { return (EqFilter<T>?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+
+    public GtFilter<T>? Gt
+    {
+        get { return (GtFilter<T>?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+
+    public GteFilter<T>? Gte
+    {
+        get { return (GteFilter<T>?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+
+    public LtFilter<T>? Lt
+    {
+        get { return (LtFilter<T>?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+
+    public LteFilter<T>? Lte
+    {
+        get { return (LteFilter<T>?)GetOneOf(); }
+        set { SetOneOf(value); }
     }
 }
 
-public class EqFilter<T>(T other) : IFilter<T>
+public record EqFilter<T>(T Other) : IFilter<T>
 {
-    public T Other { get; set; } = other;
-
     [JsonIgnore]
     [GraphQLIgnore]
     public Expression<Func<T, bool>> Filter
@@ -51,10 +58,8 @@ public class EqFilter<T>(T other) : IFilter<T>
     }
 }
 
-public class GtFilter<T>(T other) : IFilter<T>
+public record GtFilter<T>(T Other) : IFilter<T>
 {
-    public T Other { get; set; } = other;
-
     [JsonIgnore]
     [GraphQLIgnore]
     public Expression<Func<T, bool>> Filter
@@ -68,10 +73,8 @@ public class GtFilter<T>(T other) : IFilter<T>
     }
 }
 
-public class LtFilter<T>(T other) : IFilter<T>
+public record LtFilter<T>(T Other) : IFilter<T>
 {
-    public T Other { get; set; } = other;
-
     [JsonIgnore]
     [GraphQLIgnore]
     public Expression<Func<T, bool>> Filter
@@ -85,11 +88,9 @@ public class LtFilter<T>(T other) : IFilter<T>
     }
 }
 
-public class GteFilter<T>(T other) : IFilter<T>
+public record GteFilter<T>(T Other) : IFilter<T>
     where T : IComparisonOperators<T, T, bool>
 {
-    public T Other { get; set; } = other;
-
     [JsonIgnore]
     [GraphQLIgnore]
     public Expression<Func<T, bool>> Filter
@@ -106,10 +107,8 @@ public class GteFilter<T>(T other) : IFilter<T>
     }
 }
 
-public class LteFilter<T>(T other) : IFilter<T>
+public record LteFilter<T>(T Other) : IFilter<T>
 {
-    public T Other { get; set; } = other;
-
     [JsonIgnore]
     [GraphQLIgnore]
     public Expression<Func<T, bool>> Filter

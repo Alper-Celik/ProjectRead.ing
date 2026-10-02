@@ -3,79 +3,53 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.Linq.Expressions;
-using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Text.Json.Serialization;
+using LinqKit;
 
 namespace Api.QueryTypes;
 
 public interface IOneOfFilterMarker;
 
-public abstract record OneOfFilter<T> : IOneOfFilterMarker
+public abstract record OneOfFilter<T> : IFilter<T>, IOneOfFilterMarker
 {
-    protected OneOfFilter()
+    protected object? GetOneOf([CallerMemberName] string propName = "") =>
+        SelectedPropertyName == propName ? SelectedProperty : null;
+
+    protected void SetOneOf<U>(
+        U? value,
+        Expression<Func<U, T, bool>> filter,
+        [CallerMemberName] string propName = ""
+    )
     {
-        OneOfFilterSetup.ReflectProperties();
-
-        var properties =
-            OneOfFilterSetup
-                .FilterProperties?[GetType()].Where(p =>
-                    p.Value.GetValue(this) is not null
-                )
-                .ToArray()
-            ?? [];
-
-        if (properties.Length != 1)
+        if (value is not null)
         {
-            throw new ArgumentException();
+            SelectedPropertyName = propName;
+            SelectedProperty = value;
+            Filter = (t) => filter.Invoke(value, t);
         }
-
-        SelectedProperty = properties[0].Key;
     }
 
-    [JsonIgnore]
-    [GraphQLIgnore]
-    public string SelectedProperty { get; init; }
-
-    [GraphQLIgnore]
-    protected virtual Expression<Func<T, bool>> GetFilter() => (_) => true;
-
-    [JsonIgnore]
-    [GraphQLIgnore]
-    public abstract Expression<Func<T, bool>> Filter { get; }
-}
-
-public static class OneOfFilterSetup
-{
-    public static void ReflectProperties()
+    protected void SetOneOf<U>(U? value, [CallerMemberName] string propName = "")
+        where U : IFilter<T>
     {
-        if (FilterProperties is not null)
-            return;
-        var oneOfTypes = Assembly
-            .GetExecutingAssembly()
-            .GetTypes()
-            .Where(t =>
-                (
-                    !t.IsGenericType
-                    || t.GetGenericTypeDefinition() != typeof(OneOfFilter<>)
-                ) && t.IsAssignableTo(typeof(IOneOfFilterMarker))
-            );
-
-        FilterProperties = oneOfTypes.ToDictionary(
-            t => t,
-            t =>
-                t.GetProperties()
-                    .Where(p =>
-                        p.GetGetMethod()
-                            ?.ReturnType.GetInterfaces()
-                            .Any(i =>
-                                i.IsGenericType
-                                && i.GetGenericTypeDefinition() == typeof(IFilter<>)
-                            )
-                        ?? false
-                    )
-                    .ToDictionary(p => p.Name)
-        );
+        if (value is not null)
+        {
+            SelectedPropertyName = propName;
+            SelectedProperty = value;
+            Filter = value.Filter;
+        }
     }
 
-    public static Dictionary<Type, Dictionary<string, PropertyInfo>>? FilterProperties;
+    [JsonIgnore]
+    [GraphQLIgnore]
+    public string SelectedPropertyName { get; protected set; } = string.Empty;
+
+    [JsonIgnore]
+    [GraphQLIgnore]
+    public object SelectedProperty { get; protected set; } = string.Empty;
+
+    [JsonIgnore]
+    [GraphQLIgnore]
+    public Expression<Func<T, bool>> Filter { get; protected set; } = null!;
 }

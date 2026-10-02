@@ -7,18 +7,40 @@ using LinqKit;
 
 namespace Api.QueryTypes;
 
-public class AndFilter<T>(IEnumerable<IFilter<T>> filters) : IFilter<T>
+[OneOf]
+public record LogicalFilter<T>() : OneOfFilter<T>
+{
+    public AndFilter<T>? And
+    {
+        get { return (AndFilter<T>?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+
+    public OrFilter<T>? Or
+    {
+        get { return (OrFilter<T>?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+
+    public IFilter<T>? Just
+    {
+        get { return (IFilter<T>?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+}
+
+public record AndFilter<T>(IEnumerable<IFilter<T>> Filters) : IFilter<T>
 {
     public Expression<Func<T, bool>> Filter =>
-        filters
+        Filters
             .Select(f => f.Filter)
             .Aggregate((a, b) => (t) => a.Invoke(t) && b.Invoke(t));
 }
 
-public class OrFilter<T>(IEnumerable<IFilter<T>> filters) : IFilter<T>
+public record OrFilter<T>(IEnumerable<IFilter<T>> Filters) : IFilter<T>
 {
     public Expression<Func<T, bool>> Filter =>
-        filters
+        Filters
             .Select(f => f.Filter)
             .Aggregate((a, b) => (t) => a.Invoke(t) || b.Invoke(t));
 }
