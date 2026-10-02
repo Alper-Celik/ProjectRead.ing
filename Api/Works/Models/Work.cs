@@ -53,4 +53,18 @@ public class Work : IDbEntityMetadata
     public UserEF Owner { get; set; } = null!;
 }
 
-public record WorkFilter : EntityMetadataFilter<Work> { }
+//TODO: add text searches with VectorChord-bm25 when fts and embedding work starts
+public record WorkFilter : EntityMetadataFilter<Work>
+{
+    public TimeFilter? WorkPublishedAt
+    {
+        get { return (TimeFilter?)GetOneOf(); }
+        set { SetOneOf(value, w => w.WorkPublishedAt, nameof(Work.WorkPublishedAt)); }
+    }
+
+    public TimeFilter? WorkUpdatedAt
+    {
+        get { return (TimeFilter?)GetOneOf(); }
+        set { SetOneOf(value, w => w.WorkPublishedAt, nameof(Work.WorkUpdatedAt)); }
+    }
+}

@@ -3,14 +3,12 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.Linq.Expressions;
-using System.Numerics;
 using System.Text.Json.Serialization;
 
 namespace Api.QueryTypes;
 
 [OneOf]
 public record EqualityFilter<T> : OneOfFilter<T>
-    where T : IEquatable<T>
 {
     public EqFilter<T>? Eq
     {
@@ -27,7 +25,6 @@ public record EqualityFilter<T> : OneOfFilter<T>
 
 [OneOf]
 public record ComperessionFilter<T> : EqualityFilter<T>
-    where T : IComparisonOperators<T, T, bool>, IEquatable<T>
 {
     public GtFilter<T>? Gt
     {
@@ -115,7 +112,6 @@ public record LtFilter<T>(T Other) : IFilter<T>
 }
 
 public record GteFilter<T>(T Other) : IFilter<T>
-    where T : IComparisonOperators<T, T, bool>
 {
     [JsonIgnore]
     [GraphQLIgnore]

@@ -13,4 +13,4 @@ public record GuidFilter : EqualityFilter<Guid>;
 public record RowVersionFilter : EqualityFilter<int>;
 
 [OneOf]
-public record TimeFilter : ComperessionFilter<Instant>;
+public record TimeFilter : ComperessionFilter<Instant?>;
