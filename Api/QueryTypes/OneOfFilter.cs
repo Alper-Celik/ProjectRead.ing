@@ -17,8 +17,8 @@ public abstract record OneOfFilter<T> : IFilter<T>, IOneOfFilterMarker
         SelectedPropertyName == propName ? SelectedProperty : null;
 
     protected void SetOneOf<U>(
-        U? value,
-        Expression<Func<U, T, bool>> filter,
+        IFilter<U>? value,
+        Expression<Func<T, U>> selector,
         [CallerMemberName] string propName = ""
     )
     {
@@ -26,7 +26,7 @@ public abstract record OneOfFilter<T> : IFilter<T>, IOneOfFilterMarker
         {
             SelectedPropertyName = propName;
             SelectedProperty = value;
-            Filter = (t) => filter.Invoke(value, t);
+            Filter = (t) => value.Filter.Invoke(selector.Invoke(t));
         }
     }
 

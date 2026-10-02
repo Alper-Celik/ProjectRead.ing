@@ -5,6 +5,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Api.Auth.Models;
+using Api.QueryTypes;
+using Api.Utils;
+using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Riok.Mapperly.Abstractions;
@@ -61,3 +64,5 @@ public class WorkTypeConfiguration : IEntityTypeConfiguration<Work>
         builder.ComplexCollection(w => w.WorkIdentifiers, wid => wid.ToJson());
     }
 }
+
+public record WorkFilter : EntityMetadataFilter<Work> { }

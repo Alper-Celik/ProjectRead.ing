@@ -9,8 +9,8 @@ using System.Text.Json.Serialization;
 namespace Api.QueryTypes;
 
 [OneOf]
-public record ComperessionFilter<T>() : OneOfFilter<T>
-    where T : IComparisonOperators<T, T, bool>
+public record EqualityFilter<T> : OneOfFilter<T>
+    where T : IEquatable<T>
 {
     public EqFilter<T>? Eq
     {
@@ -18,6 +18,17 @@ public record ComperessionFilter<T>() : OneOfFilter<T>
         set { SetOneOf(value); }
     }
 
+    public NeqFilter<T>? Neq
+    {
+        get { return (NeqFilter<T>?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+}
+
+[OneOf]
+public record ComperessionFilter<T> : EqualityFilter<T>
+    where T : IComparisonOperators<T, T, bool>, IEquatable<T>
+{
     public GtFilter<T>? Gt
     {
         get { return (GtFilter<T>?)GetOneOf(); }
@@ -54,6 +65,21 @@ public record EqFilter<T>(T Other) : IFilter<T>
             var p = Expression.Parameter(typeof(T), typeof(T).Name);
             var c = Expression.Constant(Other, typeof(T));
             return Expression.Lambda<Func<T, bool>>(Expression.Equal(p, c), p);
+        }
+    }
+}
+
+public record NeqFilter<T>(T Other) : IFilter<T>
+{
+    [JsonIgnore]
+    [GraphQLIgnore]
+    public Expression<Func<T, bool>> Filter
+    {
+        get
+        {
+            var p = Expression.Parameter(typeof(T), typeof(T).Name);
+            var c = Expression.Constant(Other, typeof(T));
+            return Expression.Lambda<Func<T, bool>>(Expression.NotEqual(p, c), p);
         }
     }
 }

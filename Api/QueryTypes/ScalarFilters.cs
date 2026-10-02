@@ -7,14 +7,10 @@ using NodaTime;
 namespace Api.QueryTypes;
 
 [OneOf]
-public record GuidFilter() : OneOfFilter<Guid>
-{
-    public EqFilter<Guid>? Eq
-    {
-        get { return (EqFilter<Guid>?)GetOneOf(); }
-        set { SetOneOf(value); }
-    }
-}
+public record GuidFilter : EqualityFilter<Guid>;
 
 [OneOf]
-public record ITimeFilter : ComperessionFilter<Instant>;
+public record RowVersionFilter : EqualityFilter<int>;
+
+[OneOf]
+public record TimeFilter : ComperessionFilter<Instant>;
