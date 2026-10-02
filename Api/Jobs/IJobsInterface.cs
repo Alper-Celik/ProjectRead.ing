@@ -13,6 +13,15 @@ public interface IJobsInterfae
 {
     /// <param name="timeout"> if timeout is zero returns current jobs or none if there
     /// isn't </param>
+    public Task<bool> WaitPendingJobs(
+        uint timeout,
+        Guid? leaserId,
+        string[]? jobTypes,
+        CancellationToken ct
+    );
+
+    /// <param name="timeout"> if timeout is zero returns current jobs or none if there
+    /// isn't </param>
     public Task<JobData[]> PeekPendingJobs(
         uint timeout,
         uint? maxJobs,
