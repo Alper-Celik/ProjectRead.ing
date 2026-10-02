@@ -69,6 +69,20 @@ public record AddTagInput
         {
             RuleFor(t => t).BeginTransaction(tx);
 
+            RuleForEach(t => t.TagNamespace)
+                .Must(GeneralUtils.IsValidTagComponent)
+                .WithMessage(
+                    "Tag namespace components cannot be empty, contain the '::' separator, or start/end with ':'"
+                )
+                .WithErrorCode(ErrorCodes.TAG_FORBIDDEN_SEPARATOR);
+
+            RuleFor(t => t.TagName)
+                .Must(GeneralUtils.IsValidTagComponent)
+                .WithMessage(
+                    "Tag name cannot be empty, contain the '::' separator, or start/end with ':'"
+                )
+                .WithErrorCode(ErrorCodes.TAG_FORBIDDEN_SEPARATOR);
+
             RuleFor(t => t)
                 .MustAsync(
                     async (input, ct) =>
@@ -108,9 +122,5 @@ public static partial class AddTagInputMapper
 
         return tag;
     }
-
-    [UserMapping(Default = true)]
-    public static ZonedDateTime FromInstantToZonedDateTime(Instant i) =>
-        MapperUtils.FromInstantToZonedDateTime(i);
 }
 // Mostly Ai Generated - End

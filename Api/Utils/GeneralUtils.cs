@@ -59,6 +59,30 @@ public static class GeneralUtils
             .ToDictionaryAsync(ids => ids.Id, ids => ids.ManyIds.ToArray(), ct);
     }
 
+    // Mostly Ai Generated - Start
+    // Official tag namespace separator: `::` is forbidden inside tag namespace
+    // components and tag names, so the joined form round-trips losslessly.
+    // A single `:` is allowed and never ambiguous.
+    public const string TagNamespaceSeparator = "::";
+
+    // A tag namespace component or tag name must be non-empty, contain no `::`
+    // separator, and not start/end with `:` — otherwise the joined full-name form
+    // cannot be split back losslessly. A single `:` in the middle is fine.
+    public static bool IsValidTagComponent(string? s) =>
+        s is not null
+        && s.Length > 0
+        && !s.Contains(TagNamespaceSeparator)
+        && !s.StartsWith(':')
+        && !s.EndsWith(':');
+
+    public static string ToTagFullName(string[] tagNamespace, string tagName) =>
+        string.Join(TagNamespaceSeparator, [.. tagNamespace, tagName]);
+
+    public static string[] FromTagFullName(string tagFullName) =>
+        tagFullName.Split(TagNamespaceSeparator, StringSplitOptions.None);
+
+    // Mostly Ai Generated - End
+
     public static string NormalizeEmail(this string email) =>
         email.Trim().Normalize().ToLowerInvariant();
 

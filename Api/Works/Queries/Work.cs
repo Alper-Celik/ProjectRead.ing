@@ -157,16 +157,11 @@ public class Work : IEntityMetadata, INode
 
     public NodaTime.Instant? WorkPublishedAt { get; set; }
     public NodaTime.Instant? WorkUpdatedAt { get; set; }
-    public List<WorkIdentifier> WorkIdentifiers { get; set; } = [];
 }
-
-public record WorkIdentifier(string WorkIdentifierType, string WorkIdentifierValue);
 
 [Mapper]
 public static partial class WorkMapper
 {
-    public static partial Models.WorkIdentifier FromWorkIdDto(WorkIdentifier w);
-
     public static partial Work? ToDto(Models.Work? w);
 
     public static partial IQueryable<Work> ProjectToDto(this IQueryable<Models.Work> q);

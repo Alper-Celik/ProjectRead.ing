@@ -30,7 +30,24 @@ public class WorkTag : IDbEntityMetadata
 
     public required string[] TagNamespace { get; set; }
 
+    // Mostly Ai Generated - Start
+    // Tag components are joined/displayed with the `::` namespace separator, so
+    // each component must be non-empty, contain no `::`, and have no leading or
+    // trailing `:` — i.e. non-empty segments of non-`:` chars joined by single `:`.
+    public const string ComponentPattern = @"^[^:]+(?::[^:]+)*$";
+
+    // Mostly Ai Generated - End
+
+    // Mostly Ai Generated - Start
+    // Tag components are joined/displayed with the `::` namespace separator, so
+    // each component must be non-empty, contain no `::`, and have no leading or
+    // trailing `:` — i.e. non-empty segments of non-`:` chars joined by single `:`.
+    // Enforced by the validator (FluentValidation), this attribute (via
+    // EFCore.CheckConstraints) and the array CHECK below.
+    [RegularExpression(ComponentPattern)]
     public required string TagName { get; set; }
+
+    // Mostly Ai Generated - End
 
     // Navigation Properties
     public List<WorkTag_Work> WorkTagWorks { get; set; } = null!;
@@ -62,6 +79,22 @@ public class WorkTagTypeConfiguration : IEntityTypeConfiguration<WorkTag>
 {
     void IEntityTypeConfiguration<WorkTag>.Configure(EntityTypeBuilder<WorkTag> builder)
     {
+        // Mostly Ai Generated - Start
+        // CHECK constraints can't contain subqueries, so element-wise validation of
+        // the TagNamespace array is expressed by joining with an ASCII unit
+        // separator and regex-matching the result: each component must be
+        // non-empty, contain no `::`, and have no leading/trailing `:`. An empty
+        // array (no namespace) is allowed.
+        var us = "\u001F";
+        var joinedPattern =
+            $"^[^:{us}]+(?::[^:{us}]+|{us}[^:{us}]+)*$";
+        builder.ToTable(t =>
+            t.HasCheckConstraint(
+                "CK_work_tags_tag_namespace",
+                $"cardinality(tag_namespace) = 0 OR array_to_string(tag_namespace, chr(31)) ~ '{joinedPattern}'"
+            )
+        );
+        // Mostly Ai Generated - End
         builder
             .HasMany(wt => wt.Works)
             .WithMany(w => w.WorkTags)

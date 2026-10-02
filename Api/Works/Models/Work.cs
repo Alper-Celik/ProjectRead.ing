@@ -15,7 +15,6 @@ using Riok.Mapperly.Abstractions;
 namespace Api.Works.Models;
 
 [Table("works")]
-[Index(nameof(WorkIdentifiers))]
 public class Work : IDbEntityMetadata
 {
     public static byte IdPostfix => (byte)IdPostfixes.Work;
@@ -34,9 +33,8 @@ public class Work : IDbEntityMetadata
 
     public string? Description { get; set; }
 
-    public NodaTime.ZonedDateTime? WorkPublishedAt { get; set; }
-    public NodaTime.ZonedDateTime? WorkUpdatedAt { get; set; }
-    public List<WorkIdentifier> WorkIdentifiers { get; set; } = [];
+    public NodaTime.Instant? WorkPublishedAt { get; set; }
+    public NodaTime.Instant? WorkUpdatedAt { get; set; }
 
     // Navigation Properties
     [MapperIgnore]
@@ -53,16 +51,6 @@ public class Work : IDbEntityMetadata
 
     [MapperIgnore]
     public UserEF Owner { get; set; } = null!;
-}
-
-public record WorkIdentifier(string WorkIdentifierType, string WorkIdentifierValue);
-
-public class WorkTypeConfiguration : IEntityTypeConfiguration<Work>
-{
-    public void Configure(EntityTypeBuilder<Work> builder)
-    {
-        builder.ComplexCollection(w => w.WorkIdentifiers, wid => wid.ToJson());
-    }
 }
 
 public record WorkFilter : EntityMetadataFilter<Work> { }

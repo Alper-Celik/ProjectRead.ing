@@ -62,7 +62,6 @@ public record UpdateWorkInput : IBasicEntityMetadata
 
     public Optional<Instant?> WorkPublishedAt { get; init; }
     public Optional<Instant?> WorkUpdatedAt { get; init; }
-    public Optional<List<Queries.WorkIdentifier>?> WorkIdentifiers { get; init; }
     public required Optional<List<Guid>?> TagIds { get; init; }
     public required Optional<List<Guid>?> AuthorIds { get; init; }
 
@@ -105,15 +104,10 @@ public record UpdateWorkInput : IBasicEntityMetadata
             work.Description = input.Description.Value;
 
         if (input.WorkPublishedAt.HasValue)
-            work.WorkPublishedAt = input.WorkPublishedAt.Value?.InUtc();
+            work.WorkPublishedAt = input.WorkPublishedAt.Value;
 
         if (input.WorkUpdatedAt.HasValue)
-            work.WorkUpdatedAt = input.WorkUpdatedAt.Value?.InUtc();
-
-        if (input.WorkIdentifiers.HasValue)
-            work.WorkIdentifiers =
-                input.WorkIdentifiers.Value?.Select(WorkMapper.FromWorkIdDto).ToList()
-                ?? [];
+            work.WorkUpdatedAt = input.WorkUpdatedAt.Value;
 
         if (input.TagIds.HasValue)
             work.WorkTag_Works =

@@ -269,6 +269,48 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(exception?.Code).IsEqualTo(ErrorCodes.TAG_ALREADY_EXISTS);
     }
 
+    // Mostly Ai Generated - Start
+    [Test]
+    public async Task DbConstraints_RejectInvalidTagComponents(
+        CancellationToken ct
+    )
+    {
+        var client = await AuthenticatedClient();
+        await using var scope = Factory.Services.CreateAsyncScope();
+        var db = scope.ServiceProvider.GetService<PGContext>()!;
+        var ownerId = await db.Users.Select(u => u.Id).FirstAsync(ct);
+
+        var badName = new WorkTag
+        {
+            Id = Guid.CreateVersion7().WithPostfix(IdPostfixes.WorkTag),
+            TagName = "a::b",
+            TagNamespace = ["genre"],
+            OwnerId = ownerId,
+            RowVersion = 0,
+            MetadataAddedAt = Now(),
+            MetadataUpdatedAt = Now(),
+        };
+        db.Add(badName);
+        var actName = async () => await db.SaveChangesAsync(ct);
+        await Assert.That(actName).Throws<DbUpdateException>();
+        db.Entry(badName).State = EntityState.Detached;
+
+        var badNamespace = new WorkTag
+        {
+            Id = Guid.CreateVersion7().WithPostfix(IdPostfixes.WorkTag),
+            TagName = "Valid",
+            TagNamespace = ["a::b"],
+            OwnerId = ownerId,
+            RowVersion = 0,
+            MetadataAddedAt = Now(),
+            MetadataUpdatedAt = Now(),
+        };
+        db.Add(badNamespace);
+        var actNamespace = async () => await db.SaveChangesAsync(ct);
+        await Assert.That(actNamespace).Throws<DbUpdateException>();
+    }
+    // Mostly Ai Generated - End
+
     [Test]
     public async Task AddTag_WithDuplicatePair_Fails(CancellationToken ct)
     {
@@ -293,6 +335,142 @@ public class WorksMutationTests : WorksTestBase
 
         await AssertDomainErrorCode(result, ErrorCodes.TAG_ALREADY_EXISTS);
     }
+
+    // Mostly Ai Generated - Start
+    [Test]
+    [Arguments("a::b")]
+    [Arguments("")]
+    [Arguments(":a")]
+    [Arguments("a:")]
+    [Arguments("a::")]
+    [Arguments("::a")]
+    public async Task AddTag_WithInvalidNamespaceComponent_Fails(
+        string component
+    )
+    {
+        var client = await AuthenticatedClient();
+
+        var result = await client.Mutation(
+            new
+            {
+                input = new AddTagInput
+                {
+                    TagName = "Valid",
+                    TagNamespace = ["genre", component],
+                },
+            },
+            static (i, m) =>
+                m.AddTag(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
+        );
+
+        await AssertDomainErrorCode(
+            result,
+            ErrorCodes.TAG_FORBIDDEN_SEPARATOR
+        );
+    }
+
+    [Test]
+    [Arguments("a::b")]
+    [Arguments("")]
+    [Arguments(":a")]
+    [Arguments("a:")]
+    public async Task AddTag_WithInvalidTagName_Fails(string tagName)
+    {
+        var client = await AuthenticatedClient();
+
+        var result = await client.Mutation(
+            new
+            {
+                input = new AddTagInput
+                {
+                    TagName = tagName,
+                    TagNamespace = ["genre"],
+                },
+            },
+            static (i, m) =>
+                m.AddTag(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
+        );
+
+        await AssertDomainErrorCode(
+            result,
+            ErrorCodes.TAG_FORBIDDEN_SEPARATOR
+        );
+    }
+
+    [Test]
+    public async Task AddTag_WithSingleColonComponent_Succeeds()
+    {
+        var client = await AuthenticatedClient();
+
+        var result = await client.Mutation(
+            new
+            {
+                input = new AddTagInput
+                {
+                    TagName = "Name:Sub",
+                    TagNamespace = ["genre"],
+                },
+            },
+            static (i, m) => m.AddTag(i.input, p => p.Tag(t => t.TagName))
+        );
+
+        await Assert.That(result.Errors).IsNull().Or.IsEmpty();
+        await Assert.That(result.Data).IsEqualTo("Name:Sub");
+    }
+
+    [Test]
+    public async Task UpdateTag_WithInvalidComponent_Fails()
+    {
+        var client = await AuthenticatedClient();
+        var (id, rowVersion) = await AddTag(
+            client,
+            tagName: "Old",
+            tagNamespace: ["genre"]
+        );
+
+        var result = await client.Mutation(
+            new
+            {
+                input = new UpdateTagInput
+                {
+                    Id = id,
+                    RowVersion = rowVersion,
+                    TagName = "a::b",
+                    TagNamespace = ["genre"],
+                },
+            },
+            static (i, m) =>
+                m.UpdateTag(
+                    i.input,
+                    p => p.Errors(e => e.On<ClientDomainError>().Select(x => x.Code))
+                )
+        );
+
+        await AssertDomainErrorCode(
+            result,
+            ErrorCodes.TAG_FORBIDDEN_SEPARATOR
+        );
+    }
+
+    [Test]
+    public async Task TagFullName_RoundTripsLosslessly()
+    {
+        var ns = new[] { "ids", "genre:sub" };
+        var fullName = GeneralUtils.ToTagFullName(ns, "isbn:10");
+
+        await Assert.That(fullName).IsEqualTo("ids::genre:sub::isbn:10");
+
+        var split = GeneralUtils.FromTagFullName(fullName);
+        await Assert.That(split[..^1]).IsEquivalentTo(ns);
+        await Assert.That(split[^1]).IsEqualTo("isbn:10");
+    }
+    // Mostly Ai Generated - End
 
     [Test]
     public async Task UpdateTag_UpdatesProvidedFields(CancellationToken ct)
@@ -486,14 +664,6 @@ public class WorksMutationTests : WorksTestBase
             description: "A description",
             publishedAt: publishedAt,
             updatedAt: updatedAt,
-            identifiers:
-            [
-                new WorkIdentifierInput
-                {
-                    WorkIdentifierType = "isbn",
-                    WorkIdentifierValue = "123",
-                },
-            ],
             tagIds: [tagId],
             authorIds: [authorId]
         );
@@ -522,11 +692,6 @@ public class WorksMutationTests : WorksTestBase
                         n.MetadataAddedAt,
                         n.MetadataUpdatedAt,
                         Authors = n.Authors(a => new { a.DisplayName }),
-                        Identifiers = n.WorkIdentifiers(w => new
-                        {
-                            w.WorkIdentifierType,
-                            w.WorkIdentifierValue,
-                        }),
                     })
             )
         );
@@ -538,9 +703,6 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(node.WorkPublishedAt).IsNotNull();
         await Assert.That(node.WorkUpdatedAt).IsNotNull();
         await Assert.That(node.MetadataAddedAt).IsEqualTo(node.MetadataUpdatedAt);
-        await Assert.That(node.Identifiers).HasSingleItem();
-        await Assert.That(node.Identifiers[0].WorkIdentifierType).IsEqualTo("isbn");
-        await Assert.That(node.Identifiers[0].WorkIdentifierValue).IsEqualTo("123");
         await Assert.That(node.Authors).HasSingleItem();
         await Assert.That(node.Authors[0].DisplayName).IsEqualTo("Author One");
     }
@@ -558,7 +720,6 @@ public class WorksMutationTests : WorksTestBase
                     Title = "Bad",
                     TagIds = [Guid.CreateVersion7()],
                     AuthorIds = [],
-                    WorkIdentifiers = [],
                 },
             },
             static (i, m) =>
@@ -584,7 +745,6 @@ public class WorksMutationTests : WorksTestBase
                     Title = "Bad",
                     TagIds = [],
                     AuthorIds = [Guid.CreateVersion7()],
-                    WorkIdentifiers = [],
                 },
             },
             static (i, m) =>
@@ -611,7 +771,6 @@ public class WorksMutationTests : WorksTestBase
                     Title = "Bad",
                     TagIds = [tagId, tagId],
                     AuthorIds = [],
-                    WorkIdentifiers = [],
                 },
             },
             static (i, m) =>
@@ -638,7 +797,6 @@ public class WorksMutationTests : WorksTestBase
                     Title = "Bad",
                     TagIds = [],
                     AuthorIds = [authorId, authorId],
-                    WorkIdentifiers = [],
                 },
             },
             static (i, m) =>
@@ -664,14 +822,6 @@ public class WorksMutationTests : WorksTestBase
             client,
             title: "Original",
             description: "Original description",
-            identifiers:
-            [
-                new WorkIdentifierInput
-                {
-                    WorkIdentifierType = "isbn",
-                    WorkIdentifierValue = "old",
-                },
-            ],
             tagIds: [tagA],
             authorIds: [authorA]
         );
@@ -711,14 +861,6 @@ public class WorksMutationTests : WorksTestBase
                     Description = "Changed description",
                     WorkPublishedAt = publishedAt,
                     WorkUpdatedAt = updatedAt,
-                    WorkIdentifiers =
-                    [
-                        new WorkIdentifierInput
-                        {
-                            WorkIdentifierType = "isbn",
-                            WorkIdentifierValue = "new",
-                        },
-                    ],
                     TagIds = [tagB],
                     AuthorIds = [authorB],
                 },
@@ -737,11 +879,6 @@ public class WorksMutationTests : WorksTestBase
                             w.RowVersion,
                             w.MetadataAddedAt,
                             w.MetadataUpdatedAt,
-                            Identifiers = w.WorkIdentifiers(x => new
-                            {
-                                x.WorkIdentifierType,
-                                x.WorkIdentifierValue,
-                            }),
                             Authors = w.Authors(a => new { a.DisplayName }),
                         })
                 )
@@ -759,10 +896,6 @@ public class WorksMutationTests : WorksTestBase
         await Assert
             .That(result.Data.MetadataUpdatedAt)
             .IsGreaterThan(beforeNode.MetadataUpdatedAt);
-        await Assert.That(result.Data.Identifiers).HasSingleItem();
-        await Assert
-            .That(result.Data.Identifiers[0].WorkIdentifierValue)
-            .IsEqualTo("new");
         await Assert.That(result.Data.Authors).HasSingleItem();
         await Assert.That(result.Data.Authors[0].DisplayName).IsEqualTo("Author B");
     }
@@ -777,14 +910,6 @@ public class WorksMutationTests : WorksTestBase
         var (id, rowVersion) = await AddWork(
             client,
             title: "Original",
-            identifiers:
-            [
-                new WorkIdentifierInput
-                {
-                    WorkIdentifierType = "isbn",
-                    WorkIdentifierValue = "old",
-                },
-            ],
             tagIds: [tagId],
             authorIds: [authorId]
         );
@@ -818,7 +943,6 @@ public class WorksMutationTests : WorksTestBase
                     Id = id,
                     RowVersion = rowVersion,
                     Title = "Original",
-                    WorkIdentifiers = [],
                     TagIds = [],
                     AuthorIds = [],
                 },
@@ -831,18 +955,12 @@ public class WorksMutationTests : WorksTestBase
                         {
                             w.MetadataAddedAt,
                             w.MetadataUpdatedAt,
-                            Identifiers = w.WorkIdentifiers(x => new
-                            {
-                                x.WorkIdentifierType,
-                                x.WorkIdentifierValue,
-                            }),
                             Authors = w.Authors(a => a.DisplayName),
                         })
                 )
         );
 
         await Assert.That(result.Errors).IsNull().Or.IsEmpty();
-        await Assert.That(result.Data!.Identifiers).IsEmpty();
         await Assert.That(result.Data.Authors).IsEmpty();
         await Assert
             .That(result.Data.MetadataAddedAt)
