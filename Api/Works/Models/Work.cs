@@ -4,6 +4,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq.Expressions;
 using Api.Auth.Models;
 using Api.QueryTypes;
 using Api.Utils;
@@ -15,9 +16,19 @@ using Riok.Mapperly.Abstractions;
 namespace Api.Works.Models;
 
 [Table("works")]
-public class Work : IDbEntityMetadata
+public class Work
+    : IDbEntityMetadata,
+        IHasConnection<Work, Author>,
+        IHasConnection<Work, WorkTag>
 {
     public static byte IdPostfix => (byte)IdPostfixes.Work;
+
+    [MapperIgnore]
+    public static IReadOnlyDictionary<Type, LambdaExpression> Connections =>
+        new Dictionary<Type, LambdaExpression>([
+            new(typeof(Author), static (Work w) => w.Authors),
+            new(typeof(WorkTag), static (Work t) => t.WorkTags),
+        ]);
 
     [Key]
     public Guid Id { get; set; }
@@ -66,5 +77,17 @@ public record WorkFilter : EntityMetadataFilter<Work>
     {
         get { return (TimeFilter?)GetOneOf(); }
         set { SetOneOf(value, w => w.WorkPublishedAt, nameof(Work.WorkUpdatedAt)); }
+    }
+
+    public BasicStringFilter? Title
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, w => w.Title); }
+    }
+
+    public BasicStringFilter? Description
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, w => w.Description); }
     }
 }
