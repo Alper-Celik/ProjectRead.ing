@@ -14,3 +14,13 @@ public record RowVersionFilter : EqualityFilter<int>;
 
 [OneOf]
 public record TimeFilter : ComperessionFilter<Instant?>;
+
+[OneOf]
+public record BasicStringFilter : EqualityFilter<string>
+{
+    public ContainsFilter? Contains
+    {
+        get { return (ContainsFilter?)GetOneOf(); }
+        set { SetOneOf(value); }
+    }
+}
