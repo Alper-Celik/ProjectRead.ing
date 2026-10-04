@@ -7,29 +7,33 @@ using LinqKit;
 
 namespace Api.QueryTypes;
 
-[OneOf]
-public record LogicalFilter<T>() : OneOfFilter<T>
+public record LogicalFilter<T, LogicalFilterType> : OneOfFilter<T>
+    where T : IFilter<T>
+    where LogicalFilterType : LogicalFilter<T, LogicalFilterType>, IFilter<T>
 {
-    public AndFilter<T>? And
+    public AndFilter<T, LogicalFilterType>? And
     {
-        get { return (AndFilter<T>?)GetOneOf(); }
+        get { return (AndFilter<T, LogicalFilterType>?)GetOneOf(); }
         set { SetOneOf(value); }
     }
 
-    public OrFilter<T>? Or
+    public OrFilter<T, LogicalFilterType>? Or
     {
-        get { return (OrFilter<T>?)GetOneOf(); }
+        get { return (OrFilter<T, LogicalFilterType>?)GetOneOf(); }
         set { SetOneOf(value); }
     }
 
-    public IFilter<T>? Just
+    public T? Just
     {
-        get { return (IFilter<T>?)GetOneOf(); }
+        get { return (T?)GetOneOf(); }
         set { SetOneOf(value); }
     }
 }
 
-public record AndFilter<T>(IEnumerable<IFilter<T>> Filters) : IFilter<T>
+public record AndFilter<T, LogicalFilterType>(IEnumerable<LogicalFilterType> Filters)
+    : IFilter<T>
+    where T : IFilter<T>
+    where LogicalFilterType : IFilter<T>
 {
     public Expression<Func<T, bool>> Filter =>
         Filters
@@ -37,7 +41,10 @@ public record AndFilter<T>(IEnumerable<IFilter<T>> Filters) : IFilter<T>
             .Aggregate((a, b) => (t) => a.Invoke(t) && b.Invoke(t));
 }
 
-public record OrFilter<T>(IEnumerable<IFilter<T>> Filters) : IFilter<T>
+public record OrFilter<T, LogicalFilterType>(IEnumerable<LogicalFilterType> Filters)
+    : IFilter<T>
+    where T : IFilter<T>
+    where LogicalFilterType : IFilter<T>
 {
     public Expression<Func<T, bool>> Filter =>
         Filters
