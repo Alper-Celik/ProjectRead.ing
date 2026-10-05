@@ -76,18 +76,18 @@ public record WorkFilter : EntityMetadataFilter<Work>
     public TimeFilter? WorkUpdatedAt
     {
         get { return (TimeFilter?)GetOneOf(); }
-        set { SetOneOf(value, w => w.WorkPublishedAt, nameof(Work.WorkUpdatedAt)); }
+        set { SetOneOf(value, w => w.WorkUpdatedAt, nameof(Work.WorkUpdatedAt)); }
     }
 
     public BasicStringFilter? Title
     {
         get { return (BasicStringFilter?)GetOneOf(); }
-        set { SetOneOf(value, w => w.Title); }
+        set { SetOneOf<string?>(value, w => w.Title); }
     }
 
     public BasicStringFilter? Description
     {
         get { return (BasicStringFilter?)GetOneOf(); }
-        set { SetOneOf(value, w => w.Description); }
+        set { SetOneOf<string?>(value, w => w.Description); }
     }
 }

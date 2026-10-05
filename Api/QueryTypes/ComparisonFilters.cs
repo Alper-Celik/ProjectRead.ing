@@ -144,10 +144,10 @@ public record LteFilter<T>(T Other) : IFilter<T>
     }
 }
 
-public record ContainsFilter(string Needle) : IFilter<string>
+public record ContainsFilter(string Needle) : IFilter<string?>
 {
     [JsonIgnore]
     [GraphQLIgnore]
-    public Expression<Func<string, bool>> Filter =>
-        (x) => x != null && x.Contains(Needle);
+    public Expression<Func<string?, bool>> Filter =>
+        (string? x) => x != null && x.Contains(Needle);
 }
