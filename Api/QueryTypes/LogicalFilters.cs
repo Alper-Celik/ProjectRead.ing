@@ -7,9 +7,9 @@ using LinqKit;
 
 namespace Api.QueryTypes;
 
-public record LogicalFilter<T, LogicalFilterType> : OneOfFilter<T>
-    where T : IFilter<T>
-    where LogicalFilterType : LogicalFilter<T, LogicalFilterType>, IFilter<T>
+public record LogicalFilter<T, FilterType, LogicalFilterType> : OneOfFilter<T>
+    where FilterType : IFilter<T>
+    where LogicalFilterType : LogicalFilter<T, FilterType, LogicalFilterType>, IFilter<T>
 {
     public AndFilter<T, LogicalFilterType>? And
     {
@@ -23,16 +23,15 @@ public record LogicalFilter<T, LogicalFilterType> : OneOfFilter<T>
         set { SetOneOf(value); }
     }
 
-    public T? Just
+    public FilterType? Just
     {
-        get { return (T?)GetOneOf(); }
+        get { return (FilterType?)GetOneOf(); }
         set { SetOneOf(value); }
     }
 }
 
 public record AndFilter<T, LogicalFilterType>(IEnumerable<LogicalFilterType> Filters)
     : IFilter<T>
-    where T : IFilter<T>
     where LogicalFilterType : IFilter<T>
 {
     public Expression<Func<T, bool>> Filter =>
@@ -43,7 +42,6 @@ public record AndFilter<T, LogicalFilterType>(IEnumerable<LogicalFilterType> Fil
 
 public record OrFilter<T, LogicalFilterType>(IEnumerable<LogicalFilterType> Filters)
     : IFilter<T>
-    where T : IFilter<T>
     where LogicalFilterType : IFilter<T>
 {
     public Expression<Func<T, bool>> Filter =>

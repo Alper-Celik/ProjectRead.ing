@@ -5,6 +5,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Api.Auth.Models;
+using Api.QueryTypes;
 using Api.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -73,3 +74,5 @@ public class AuthorTypeConfiguration : IEntityTypeConfiguration<Author>
             .UsingEntity(typeof(Work_Author));
     }
 }
+
+public record AuthorFilterPart : EntityMetadataFilter<Author> { }

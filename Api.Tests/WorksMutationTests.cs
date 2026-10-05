@@ -271,9 +271,7 @@ public class WorksMutationTests : WorksTestBase
 
     // Mostly Ai Generated - Start
     [Test]
-    public async Task DbConstraints_RejectInvalidTagComponents(
-        CancellationToken ct
-    )
+    public async Task DbConstraints_RejectInvalidTagComponents(CancellationToken ct)
     {
         var client = await AuthenticatedClient();
         await using var scope = Factory.Services.CreateAsyncScope();
@@ -309,6 +307,7 @@ public class WorksMutationTests : WorksTestBase
         var actNamespace = async () => await db.SaveChangesAsync(ct);
         await Assert.That(actNamespace).Throws<DbUpdateException>();
     }
+
     // Mostly Ai Generated - End
 
     [Test]
@@ -344,9 +343,7 @@ public class WorksMutationTests : WorksTestBase
     [Arguments("a:")]
     [Arguments("a::")]
     [Arguments("::a")]
-    public async Task AddTag_WithInvalidNamespaceComponent_Fails(
-        string component
-    )
+    public async Task AddTag_WithInvalidNamespaceComponent_Fails(string component)
     {
         var client = await AuthenticatedClient();
 
@@ -366,10 +363,7 @@ public class WorksMutationTests : WorksTestBase
                 )
         );
 
-        await AssertDomainErrorCode(
-            result,
-            ErrorCodes.TAG_FORBIDDEN_SEPARATOR
-        );
+        await AssertDomainErrorCode(result, ErrorCodes.TAG_FORBIDDEN_SEPARATOR);
     }
 
     [Test]
@@ -384,11 +378,7 @@ public class WorksMutationTests : WorksTestBase
         var result = await client.Mutation(
             new
             {
-                input = new AddTagInput
-                {
-                    TagName = tagName,
-                    TagNamespace = ["genre"],
-                },
+                input = new AddTagInput { TagName = tagName, TagNamespace = ["genre"] },
             },
             static (i, m) =>
                 m.AddTag(
@@ -397,10 +387,7 @@ public class WorksMutationTests : WorksTestBase
                 )
         );
 
-        await AssertDomainErrorCode(
-            result,
-            ErrorCodes.TAG_FORBIDDEN_SEPARATOR
-        );
+        await AssertDomainErrorCode(result, ErrorCodes.TAG_FORBIDDEN_SEPARATOR);
     }
 
     [Test]
@@ -452,10 +439,7 @@ public class WorksMutationTests : WorksTestBase
                 )
         );
 
-        await AssertDomainErrorCode(
-            result,
-            ErrorCodes.TAG_FORBIDDEN_SEPARATOR
-        );
+        await AssertDomainErrorCode(result, ErrorCodes.TAG_FORBIDDEN_SEPARATOR);
     }
 
     [Test]
@@ -470,6 +454,7 @@ public class WorksMutationTests : WorksTestBase
         await Assert.That(split[..^1]).IsEquivalentTo(ns);
         await Assert.That(split[^1]).IsEqualTo("isbn:10");
     }
+
     // Mostly Ai Generated - End
 
     [Test]
@@ -670,7 +655,10 @@ public class WorksMutationTests : WorksTestBase
 
         var filter = new WorkFilterInput
         {
-            Id = new UuidOperationFilterInput { Eq = id },
+            Just = new WorkFilterPartInput
+            {
+                Id = new GuidFilterInput { Eq = new EqFilterOfGuidInput { Other = id } },
+            },
         };
 
         var result = await client.Query(q =>
@@ -679,7 +667,7 @@ public class WorksMutationTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: filter,
+                filter: filter,
                 order: null,
                 selector: c =>
                     c.Nodes(n => new
@@ -828,7 +816,10 @@ public class WorksMutationTests : WorksTestBase
 
         var filter = new WorkFilterInput
         {
-            Id = new UuidOperationFilterInput { Eq = id },
+            Just = new WorkFilterPartInput
+            {
+                Id = new GuidFilterInput { Eq = new EqFilterOfGuidInput { Other = id } },
+            },
         };
 
         var before = await client.Query(q =>
@@ -837,7 +828,7 @@ public class WorksMutationTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: filter,
+                filter: filter,
                 order: null,
                 selector: c =>
                     c.Nodes(n => new { n.MetadataAddedAt, n.MetadataUpdatedAt })
@@ -916,7 +907,10 @@ public class WorksMutationTests : WorksTestBase
 
         var filter = new WorkFilterInput
         {
-            Id = new UuidOperationFilterInput { Eq = id },
+            Just = new WorkFilterPartInput
+            {
+                Id = new GuidFilterInput { Eq = new EqFilterOfGuidInput { Other = id } },
+            },
         };
 
         var before = await client.Query(q =>
@@ -925,7 +919,7 @@ public class WorksMutationTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: filter,
+                filter: filter,
                 order: null,
                 selector: c =>
                     c.Nodes(n => new { n.MetadataAddedAt, n.MetadataUpdatedAt })

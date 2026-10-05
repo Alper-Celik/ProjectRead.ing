@@ -2,6 +2,7 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+using Api.Works.Models;
 using NodaTime;
 
 namespace Api.QueryTypes;
@@ -16,7 +17,7 @@ public record RowVersionFilter : EqualityFilter<int>;
 public record TimeFilter : ComperessionFilter<Instant?>;
 
 [OneOf]
-public record BasicStringFilter : EqualityFilter<string>
+public record BasicStringFilter : EqualityFilter<string?>
 {
     public ContainsFilter? Contains
     {
@@ -24,3 +25,5 @@ public record BasicStringFilter : EqualityFilter<string>
         set { SetOneOf(value); }
     }
 }
+
+// public record AuthorConnectionFilter : ConnectionFilter<>

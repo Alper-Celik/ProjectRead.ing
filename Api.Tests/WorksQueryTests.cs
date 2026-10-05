@@ -73,7 +73,7 @@ public class WorksQueryTests : WorksTestBase
                             after: null,
                             last: null,
                             before: null,
-                            where: null,
+                            filter: null,
                             order: null,
                             selector: w => w.Nodes(x => new { x.Title })
                         ),
@@ -135,7 +135,13 @@ public class WorksQueryTests : WorksTestBase
         var order = new[] { new WorkSortInput { Title = SortEnumType.Asc } };
         var filter = new WorkFilterInput
         {
-            Title = new StringOperationFilterInput { Contains = "a" },
+            Just = new WorkFilterPartInput
+            {
+                Title = new BasicStringFilterInput
+                {
+                    Contains = new ContainsFilterInput { Needle = "a" },
+                },
+            },
         };
 
         var result = await client.Query(q =>
@@ -144,7 +150,7 @@ public class WorksQueryTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: filter,
+                filter: filter,
                 order: order,
                 selector: c => new { c.TotalCount, Nodes = c.Nodes(w => new { w.Title }) }
             )
@@ -215,7 +221,7 @@ public class WorksQueryTests : WorksTestBase
                             after: null,
                             last: null,
                             before: null,
-                            where: null,
+                            filter: null,
                             order: order,
                             selector: w => new
                             {
@@ -249,7 +255,7 @@ public class WorksQueryTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: null,
+                filter: null,
                 order: order,
                 selector: c => new
                 {
@@ -277,7 +283,7 @@ public class WorksQueryTests : WorksTestBase
                 after: endCursor,
                 last: null,
                 before: null,
-                where: null,
+                filter: null,
                 order: order,
                 selector: c => new { Nodes = c.Nodes(w => new { w.Title }) }
             )
@@ -314,7 +320,7 @@ public class WorksQueryTests : WorksTestBase
                             after: null,
                             last: null,
                             before: null,
-                            where: null,
+                            filter: null,
                             order: null,
                             selector: w => w.Nodes(x => new { x.Title })
                         ),
@@ -344,7 +350,13 @@ public class WorksQueryTests : WorksTestBase
         var order = new[] { new WorkSortInput { Title = SortEnumType.Asc } };
         var filter = new WorkFilterInput
         {
-            Title = new StringOperationFilterInput { Contains = "a" },
+            Just = new WorkFilterPartInput
+            {
+                Title = new BasicStringFilterInput
+                {
+                    Contains = new ContainsFilterInput { Needle = "a" },
+                },
+            },
         };
 
         var result = await client.Query(q =>
@@ -364,7 +376,7 @@ public class WorksQueryTests : WorksTestBase
                             after: null,
                             last: null,
                             before: null,
-                            where: filter,
+                            filter: filter,
                             order: order,
                             selector: w => new
                             {
@@ -412,7 +424,7 @@ public class WorksQueryTests : WorksTestBase
                             after: null,
                             last: null,
                             before: null,
-                            where: null,
+                            filter: null,
                             order: order,
                             selector: w => new
                             {
@@ -446,7 +458,7 @@ public class WorksQueryTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: null,
+                filter: null,
                 order: null,
                 selector: c =>
                     c.Nodes(w => new
@@ -480,7 +492,7 @@ public class WorksQueryTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: null,
+                filter: null,
                 order: null,
                 selector: c =>
                     c.Nodes(w => new

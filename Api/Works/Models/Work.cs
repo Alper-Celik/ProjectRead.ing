@@ -64,8 +64,10 @@ public class Work
     public UserEF Owner { get; set; } = null!;
 }
 
+public record WorkFilter : LogicalFilter<Work, WorkFilterPart, WorkFilter>;
+
 //TODO: add text searches with VectorChord-bm25 when fts and embedding work starts
-public record WorkFilter : EntityMetadataFilter<Work>
+public record WorkFilterPart : EntityMetadataFilter<Work>
 {
     public TimeFilter? WorkPublishedAt
     {

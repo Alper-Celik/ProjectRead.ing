@@ -6,8 +6,10 @@ using Api.Auth.Handlers;
 using Api.Auth.Utils;
 using Api.Database;
 using Api.Utils;
+using Api.Works.Models;
 using GreenDonut.Data;
 using HotChocolate.Types.Pagination;
+using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Riok.Mapperly.Abstractions;
 using static Api.Works.Queries.AuthorDataLoaders;
@@ -40,7 +42,6 @@ public static partial class AuthorQuery
 public static partial class AuthorNode
 {
     [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkRead)]
-    [UseFiltering]
     [UseSorting]
     [GraphQLName("Works")]
     public static async Task<PageConnection<Work>> GetWorksByAuthor(
@@ -50,12 +51,18 @@ public static partial class AuthorNode
         [Service] IWorkByIdDataLoader workById,
         QueryContext<Work> qc,
         PagingArguments pagingArguments,
+        WorkFilter? filter,
         CancellationToken ct
     )
     {
-        return await db
+        var query = db
             .Works.Where(w => w.OwnerId == userId.Id)
-            .Where(w => w.Authors.Select(a => a.Id).Contains(author.Id))
+            .Where(w => w.Authors.Select(a => a.Id).Contains(author.Id));
+        if (filter is not null)
+        {
+            query = query.Where(w => filter.Filter.Invoke(w));
+        }
+        return await query
             .ProjectToDto()
             .WithQueryContext(qc)
             .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
