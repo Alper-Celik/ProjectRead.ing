@@ -17,46 +17,51 @@ public interface IHasConnection<T, U>
     > Connections { get; }
 }
 
-public record HasFilter<T, U>(IFilter<U> ElementFilter) : IFilter<T>
-    where T : IHasConnection<T, U>
+public record HasFilter<FromType, ToType, FilterType>(FilterType ElementFilter)
+    : IFilter<FromType>
+    where FilterType : IFilter<ToType>
+    where FromType : IHasConnection<FromType, ToType>
 {
     [JsonIgnore]
     [GraphQLIgnore]
-    private static readonly Expression<Func<T, IList<U>>> Selector =
-        (Expression<Func<T, IList<U>>>)T.Connections[typeof(U)];
+    private static readonly Expression<Func<FromType, IList<ToType>>> Selector =
+        (Expression<Func<FromType, IList<ToType>>>)FromType.Connections[typeof(ToType)];
 
     [JsonIgnore]
     [GraphQLIgnore]
-    public Expression<Func<T, bool>> Filter =>
+    public Expression<Func<FromType, bool>> Filter =>
         (t) => Selector.Invoke(t).Any(u => ElementFilter.Filter.Invoke(u));
 }
 
-public record HasNotFilter<T, U>(IFilter<U> ElementFilter) : IFilter<T>
-    where T : IHasConnection<T, U>
+public record HasNotFilter<FromType, ToType, FilterType>(FilterType ElementFilter)
+    : IFilter<FromType>
+    where FilterType : IFilter<ToType>
+    where FromType : IHasConnection<FromType, ToType>
 {
     [JsonIgnore]
     [GraphQLIgnore]
-    private static readonly Expression<Func<T, IList<U>>> Selector =
-        (Expression<Func<T, IList<U>>>)T.Connections[typeof(U)];
+    private static readonly Expression<Func<FromType, IList<ToType>>> Selector =
+        (Expression<Func<FromType, IList<ToType>>>)FromType.Connections[typeof(ToType)];
 
     [JsonIgnore]
     [GraphQLIgnore]
-    public Expression<Func<T, bool>> Filter =>
+    public Expression<Func<FromType, bool>> Filter =>
         (t) => !Selector.Invoke(t).Any(u => ElementFilter.Filter.Invoke(u));
 }
 
-public record ConnectionFilter<T, U> : OneOfFilter<T>
-    where T : IHasConnection<T, U>
+public record ConnectionFilter<FromType, ToType, FilterType> : OneOfFilter<FromType>
+    where FilterType : IFilter<ToType>
+    where FromType : IHasConnection<FromType, ToType>
 {
-    public HasFilter<T, U>? Has
+    public HasFilter<FromType, ToType, FilterType>? Has
     {
-        get { return (HasFilter<T, U>?)GetOneOf(); }
+        get { return (HasFilter<FromType, ToType, FilterType>?)GetOneOf(); }
         set { SetOneOf(value); }
     }
 
-    public HasNotFilter<T, U>? HasNot
+    public HasNotFilter<FromType, ToType, FilterType>? HasNot
     {
-        get { return (HasNotFilter<T, U>?)GetOneOf(); }
+        get { return (HasNotFilter<FromType, ToType, FilterType>?)GetOneOf(); }
         set { SetOneOf(value); }
     }
 }

@@ -75,4 +75,6 @@ public class AuthorTypeConfiguration : IEntityTypeConfiguration<Author>
     }
 }
 
+public record AuthorFilter : LogicalFilter<Author, AuthorFilterPart, AuthorFilter>;
+
 public record AuthorFilterPart : EntityMetadataFilter<Author> { }

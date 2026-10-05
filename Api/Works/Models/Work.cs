@@ -72,24 +72,30 @@ public record WorkFilterPart : EntityMetadataFilter<Work>
     public TimeFilter? WorkPublishedAt
     {
         get { return (TimeFilter?)GetOneOf(); }
-        set { SetOneOf(value, w => w.WorkPublishedAt, nameof(Work.WorkPublishedAt)); }
+        set { SetOneOf(value, w => w.WorkPublishedAt); }
     }
 
     public TimeFilter? WorkUpdatedAt
     {
         get { return (TimeFilter?)GetOneOf(); }
-        set { SetOneOf(value, w => w.WorkUpdatedAt, nameof(Work.WorkUpdatedAt)); }
+        set { SetOneOf(value, w => w.WorkUpdatedAt); }
     }
 
     public BasicStringFilter? Title
     {
         get { return (BasicStringFilter?)GetOneOf(); }
-        set { SetOneOf<string?>(value, w => w.Title); }
+        set { SetOneOf(value, w => w.Title); }
     }
 
     public BasicStringFilter? Description
     {
         get { return (BasicStringFilter?)GetOneOf(); }
-        set { SetOneOf<string?>(value, w => w.Description); }
+        set { SetOneOf(value, w => w.Description); }
+    }
+
+    public WorkToAuthorConnectionFilter? Authors
+    {
+        get { return (WorkToAuthorConnectionFilter?)GetOneOf(); }
+        set { SetOneOf(value); }
     }
 }

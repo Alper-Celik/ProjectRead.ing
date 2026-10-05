@@ -26,4 +26,4 @@ public record BasicStringFilter : EqualityFilter<string?>
     }
 }
 
-// public record AuthorConnectionFilter : ConnectionFilter<>
+public record WorkToAuthorConnectionFilter : ConnectionFilter<Work, Author, AuthorFilter>;
