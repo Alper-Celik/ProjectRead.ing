@@ -21,7 +21,6 @@ namespace Api.Works.Queries;
 public static partial class AuthorQuery
 {
     [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.AuthorRead)]
-    [UseFiltering]
     [UseSorting]
     public static async Task<PageConnection<Author>> GetAuthors(
         [Service] PGContext db,
@@ -29,13 +28,20 @@ public static partial class AuthorQuery
         [Service] IAuthorByIdDataLoader authorById,
         QueryContext<Author> qc,
         PagingArguments pg,
+        AuthorFilter? filter,
         CancellationToken ct
-    ) =>
-        await db
-            .Authors.Where(a => a.OwnerId == userId.Id)
+    )
+    {
+        var query = db.Authors.Where(a => a.OwnerId == userId.Id);
+        if (filter is not null)
+        {
+            query = query.Where(a => filter.Filter.Invoke(a));
+        }
+        return await query
             .ProjectToDto()
             .WithQueryContext(qc)
             .ToPageWithDataLoaderAsync(pg, authorById, ct);
+    }
 }
 
 [ObjectType<Author>]

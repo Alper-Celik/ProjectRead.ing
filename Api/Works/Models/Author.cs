@@ -75,6 +75,27 @@ public class AuthorTypeConfiguration : IEntityTypeConfiguration<Author>
     }
 }
 
+// Mostly Ai Generated - Start
 public record AuthorFilter : LogicalFilter<Author, AuthorFilterPart, AuthorFilter>;
 
-public record AuthorFilterPart : EntityMetadataFilter<Author> { }
+public record AuthorFilterPart : EntityMetadataFilter<Author>
+{
+    public BasicStringFilter? FirstName
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, a => a.FirstName); }
+    }
+
+    public BasicStringFilter? LastName
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, a => a.LastName); }
+    }
+
+    public BasicStringFilter? DisplayName
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, a => a.DisplayName); }
+    }
+}
+// Mostly Ai Generated - End

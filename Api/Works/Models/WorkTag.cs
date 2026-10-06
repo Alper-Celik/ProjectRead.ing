@@ -5,7 +5,9 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Api.Auth.Models;
+using Api.QueryTypes;
 using Api.Utils;
+using Api.Works.Queries;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Riok.Mapperly.Abstractions;
@@ -86,8 +88,7 @@ public class WorkTagTypeConfiguration : IEntityTypeConfiguration<WorkTag>
         // non-empty, contain no `::`, and have no leading/trailing `:`. An empty
         // array (no namespace) is allowed.
         var us = "\u001F";
-        var joinedPattern =
-            $"^[^:{us}]+(?::[^:{us}]+|{us}[^:{us}]+)*$";
+        var joinedPattern = $"^[^:{us}]+(?::[^:{us}]+|{us}[^:{us}]+)*$";
         builder.ToTable(t =>
             t.HasCheckConstraint(
                 "CK_work_tags_tag_namespace",
@@ -101,3 +102,16 @@ public class WorkTagTypeConfiguration : IEntityTypeConfiguration<WorkTag>
             .UsingEntity(typeof(WorkTag_Work));
     }
 }
+
+// Mostly Ai Generated - Start
+public record TagFilter : LogicalFilter<WorkTag, TagFilterPart, TagFilter>;
+
+public record TagFilterPart : EntityMetadataFilter<WorkTag>
+{
+    public BasicStringFilter? TagName
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, t => t.TagName); }
+    }
+}
+// Mostly Ai Generated - End

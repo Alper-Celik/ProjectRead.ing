@@ -42,6 +42,7 @@ Api/
 │   ├── PGContext.cs        # Main DbContext (partial)
 │   └── Utils/             # IEFTransactionDIAccessorService
 ├── Graphql/               # ErrorCodes, GuidNodeSerializer
+├── QueryTypes/            # Custom filter system: OneOfFilter, LogicalFilter, ConnectionFilter, NamedFilters
 ├── Utils/                 # ValidatorUtils, DomainError, EntityMetadata, IdPostfixes, MapperUtils, GeneralUtils
 ├── Works/
 │   ├── Models/            # EF entities: Work, WorkTag, Author, join entities
@@ -279,7 +280,6 @@ raw GraphQL clients can still send explicit nulls — that's why required fields
 public static partial class XxxQuery
 {
     [PermissionCheckAuthorize(UserPermissionBits.XxxRead)]
-    [UseFiltering]
     [UseSorting]
     public static async Task<PageConnection<Xxx>> GetXxxs(
         [Service] PGContext db,
@@ -287,9 +287,18 @@ public static partial class XxxQuery
         [Service] XxxNode.IXxxByIdDataLoader xxxById,
         QueryContext<Xxx> qc,
         PagingArguments pg,
+        XxxFilter? filter,
         CancellationToken ct
-    ) => await db.Xxxs.Where(x => x.OwnerId == userId.Id)
-        .ProjectToDto().WithQueryContext(qc).ToPageWithDataLoaderAsync(pg, xxxById, ct);
+    )
+    {
+        var query = db.Xxxs.Where(x => x.OwnerId == userId.Id);
+        if (filter is not null)
+        {
+            query = query.Where(x => filter.Filter.Invoke(x));
+        }
+        return await query
+            .ProjectToDto().WithQueryContext(qc).ToPageWithDataLoaderAsync(pg, xxxById, ct);
+    }
 }
 
 [ObjectType<Xxx>]
@@ -333,6 +342,47 @@ public static partial class XxxMapper
 }
 ```
 
+### Custom Filter System (Api/QueryTypes)
+
+Hand-rolled filter system (the virtual library stores query JSONs in the DB, so filters must
+be typed, serializable record trees). Wire shape: `XxxFilterInput { and, or, just }` whose
+leaf is `XxxFilterPartInput` (one one-of field per condition). Sorting stays on HotChocolate's
+`[UseSorting]` for now.
+
+- **Core pieces** (`Api/QueryTypes/`): `IFilter<T>` + `OneOfFilter<T>` (one-of via
+  `GetOneOf`/`SetOneOf`, LinqKit `.Invoke` composition — expanding is enabled on the context);
+  `EqualityFilter<T>`/`ComperessionFilter<T>` (`EqFilter`, `NeqFilter`, `Gt/Lt/Gte/Lte`);
+  `ContainsFilter : IFilter<string?>`; `LogicalFilter<TEntity, TFilterPart, TSelf>` =
+  and/or/just with the **phantom `FilterType` type parameter** carrying the concrete leaf;
+  `ConnectionFilter<From, To, TFilterType>` with `HasFilter`/`HasNotFilter`
+  (`Selector.Invoke(t).Any(...)` → `EXISTS`); `EntityMetadataFilter<T>` base adding
+  `Id`/`RowVersion`/`Metadata*` conditions. Named wrapper records live in
+  `NamedFilters.cs` (e.g. `WorkToAuthorConnectionFilter : ConnectionFilter<Work, Author,
+  AuthorFilter>`) — **never put `IFilter<T>` on the wire** (GraphQL has no input interfaces);
+  every wire-facing property must be a concrete record.
+- **Per-entity wiring** (in the entity's model file, AI-marked): `XxxFilter :
+  LogicalFilter<Xxx, XxxFilterPart, XxxFilter>` + `XxxFilterPart : EntityMetadataFilter<Xxx>`
+  with domain-field one-of props. `Xxx` here is the **EF entity** (`WorkFilterPart` binds
+  `Work`, `TagFilterPart` binds `WorkTag`), not the GraphQL DTO. In `Models/` files bare
+  `Tag` resolves to `HotChocolate.Types.Tag` (global usings) — use `WorkTag`.
+- **Queries take `XxxFilter? filter`** (arg name is `filter:`, param name) and apply
+  `query.Where(x => filter.Filter.Invoke(x))`. **Remove `[UseFiltering]` when adding a custom
+  filter** — HC's convention generates its own `XxxFilterInput` and the schema export dies
+  with "name already registered". That export exception only *prints* while the build
+  "succeeds" (stale `Schema.graphql`/ZeroQL client) — check build output for
+  `SchemaException`. Still on `[UseFiltering]`: only `GetFileRecords` (no custom
+  `FileRecordFilter` yet).
+- **Nullability**: `BasicStringFilter : EqualityFilter<string?>` so `eq: null` matches `IS
+  NULL` at runtime — but HC erases NRT through generics, so `EqFilterOfStringInput.other`
+  exports as `String!` (only `Instant?` works: `Nullable<Instant>` is a real runtime type).
+  `ContainsFilterInput.needle` is `String!`. Leaf parts are NOT `@oneOf` in the schema yet —
+  runtime is last-bound-wins, so a client setting two fields on one part silently loses one
+  (open item, see `TODO.md`).
+- **ZeroQL tests**: filter args are `filter:` (not HC's `where:`), shapes are
+  `new XxxFilterInput { Just = new XxxFilterPartInput { Title = new BasicStringFilterInput {
+  Contains = new ContainsFilterInput { Needle = "a" } } } }`.
+- Planned tag model work (ltree paths, wrangling, vector search shelves): see `TODO.md`.
+
 ### Nested Connections & M2M Data Loaders
 
 Nested fields live on the `[ObjectType<T>]` node class, take `[Parent]`, and resolve ids
@@ -359,17 +409,24 @@ public static async Task<IReadOnlyList<Tag>> GetTagsByWorkAsync(
 
 // Connection variant (TagNode):
 [PermissionCheckAuthorize(UserPermissionBits.WorkRead)]
-[UseFiltering]
 [UseSorting]
 [GraphQLName("Works")]
 public static async Task<PageConnection<Work>> GetWorksByTag(
     [Parent] Tag tag, [Service] PGContext db, [Service] ICurrentUserId userId,
     [Service] IWorkByIdDataLoader workById, QueryContext<Work> qc,
-    PagingArguments pagingArguments, CancellationToken ct
-) => await db.Works.Where(w => w.OwnerId == userId.Id)
-    .Where(w => w.WorkTags.Select(t => t.Id).Contains(tag.Id))
-    .ProjectToDto().WithQueryContext(qc)
-    .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
+    PagingArguments pagingArguments, WorkFilter? filter, CancellationToken ct
+)
+{
+    var query = db.Works.Where(w => w.OwnerId == userId.Id)
+        .Where(w => w.WorkTags.Select(t => t.Id).Contains(tag.Id));
+    if (filter is not null)
+    {
+        query = query.Where(w => filter.Filter.Invoke(w));
+    }
+    return await query
+        .ProjectToDto().WithQueryContext(qc)
+        .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);
+}
 ```
 
 The id data loader delegates to `GeneralUtils.GetManyToManyIds` (`Api/Utils/GeneralUtils.cs`),
@@ -537,8 +594,8 @@ public DbSet<FileProviderBackendConfig> FileProviderBackendConfigs { get; set; }
   the catch covers the validator's check-then-insert race under READ COMMITTED. Use this helper (not a naked `SaveChangesAsync`) when a mutation writes
   a row guarded by a unique index; pass a `null` `sqlState` to match any PostgreSQL error.
 - GraphQL cost model: `Filtering`/`Sorting` `VariableMultiplier = 1` and `MaxFieldCost`/
-  `MaxTypeCost = 20_000` are REQUIRED for nested connection filtering (`Tag.works(where:)`,
-  `Author.works(where:)`) — the defaults plus a 5k cap rejected such queries with `HC0047`.
+  `MaxTypeCost = 20_000` are REQUIRED for nested connection filtering (`Tag.works(filter:)`,
+  `Author.works(filter:)`) — the defaults plus a 5k cap rejected such queries with `HC0047`.
   Real depth guards are `MaxPageSize = 50` + `RequirePagingBoundaries = true`.
 - HotChocolate/GreenDonut are pinned to prerelease `16.7.0-p.5` for the `[DataLoaderModule]`
   source-generated modules — track releases and bump to stable when available.
@@ -554,6 +611,9 @@ public DbSet<FileProviderBackendConfig> FileProviderBackendConfigs { get; set; }
 - When a domain service already constructs the entity (e.g. `UserFileRouter.CreateFileAsync`),
   mutations call it instead of adding a Mapperly input mapper that duplicates construction
 - AI-authored regions are wrapped in `// Mostly Ai Generated - Start` / `- End` markers
+  (only substantial blocks — not one-line edits). Markdown files use HTML-comment variants:
+  `<!-- Mostly Ai Generated -->` for a whole file (e.g. `TODO.md`). Commit messages disclose
+  AI assistance.
 - Binary values (SHA-256) go over the wire as lowercase hex via a node value resolver — never
   as `byte[]` (serializes as `Base64String`) and never converted inside `ProjectToDto`
 - The app is Linux-only: `[assembly: SupportedOSPlatform("linux")]` on both `Api` and

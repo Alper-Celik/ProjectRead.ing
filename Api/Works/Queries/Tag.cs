@@ -20,7 +20,6 @@ namespace Api.Works.Queries;
 public static partial class TagQuery
 {
     [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.TagRead)]
-    [UseFiltering]
     [UseSorting]
     public static async Task<PageConnection<Tag>> GetTags(
         [Service] PGContext db,
@@ -28,11 +27,16 @@ public static partial class TagQuery
         [Service] TagNode.ITagByIdDataLoader tagById,
         QueryContext<Tag> qc,
         PagingArguments pg,
+        TagFilter? filter,
         CancellationToken ct
     )
     {
-        return await db
-            .WorkTags.Where(wt => wt.OwnerId == userId.Id)
+        var query = db.WorkTags.Where(wt => wt.OwnerId == userId.Id);
+        if (filter is not null)
+        {
+            query = query.Where(wt => filter.Filter.Invoke(wt));
+        }
+        return await query
             .ProjectToDto()
             .WithQueryContext(qc)
             .ToPageWithDataLoaderAsync(pg, tagById, ct);

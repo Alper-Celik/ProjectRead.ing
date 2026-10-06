@@ -34,7 +34,10 @@ public class WorksMutationTests : WorksTestBase
 
         var filter = new AuthorFilterInput
         {
-            Id = new UuidOperationFilterInput { Eq = id },
+            Just = new AuthorFilterPartInput
+            {
+                Id = new GuidFilterInput { Eq = new EqFilterOfGuidInput { Other = id } },
+            },
         };
 
         var result = await client.Query(q =>
@@ -43,7 +46,7 @@ public class WorksMutationTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: filter,
+                filter: filter,
                 order: null,
                 selector: c =>
                     c.Nodes(n => new
@@ -76,7 +79,10 @@ public class WorksMutationTests : WorksTestBase
 
         var filter = new AuthorFilterInput
         {
-            Id = new UuidOperationFilterInput { Eq = id },
+            Just = new AuthorFilterPartInput
+            {
+                Id = new GuidFilterInput { Eq = new EqFilterOfGuidInput { Other = id } },
+            },
         };
 
         var before = await client.Query(q =>
@@ -85,7 +91,7 @@ public class WorksMutationTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: filter,
+                filter: filter,
                 order: null,
                 selector: c =>
                     c.Nodes(n => new { n.MetadataAddedAt, n.MetadataUpdatedAt })
@@ -202,7 +208,13 @@ public class WorksMutationTests : WorksTestBase
             tagNamespace: ["genre", "sub"]
         );
 
-        var filter = new TagFilterInput { Id = new UuidOperationFilterInput { Eq = id } };
+        var filter = new TagFilterInput
+        {
+            Just = new TagFilterPartInput
+            {
+                Id = new GuidFilterInput { Eq = new EqFilterOfGuidInput { Other = id } },
+            },
+        };
 
         var result = await client.Query(q =>
             q.Tags(
@@ -210,7 +222,7 @@ public class WorksMutationTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: filter,
+                filter: filter,
                 order: null,
                 selector: c =>
                     c.Nodes(n => new
@@ -463,7 +475,13 @@ public class WorksMutationTests : WorksTestBase
         var client = await AuthenticatedClient();
         var (id, rowVersion) = await AddTag(client, tagName: "Old");
 
-        var filter = new TagFilterInput { Id = new UuidOperationFilterInput { Eq = id } };
+        var filter = new TagFilterInput
+        {
+            Just = new TagFilterPartInput
+            {
+                Id = new GuidFilterInput { Eq = new EqFilterOfGuidInput { Other = id } },
+            },
+        };
 
         var before = await client.Query(q =>
             q.Tags(
@@ -471,7 +489,7 @@ public class WorksMutationTests : WorksTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: filter,
+                filter: filter,
                 order: null,
                 selector: c =>
                     c.Nodes(n => new { n.MetadataAddedAt, n.MetadataUpdatedAt })
