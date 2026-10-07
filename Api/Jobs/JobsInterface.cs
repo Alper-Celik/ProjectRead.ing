@@ -2,9 +2,12 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
+using System.Diagnostics;
 using System.Reactive.Disposables;
 using System.Text.Json;
+using Api.Auth.Utils;
 using Api.Database;
+using Api.Database.Utils;
 using Api.Jobs.Models;
 using Microsoft.EntityFrameworkCore;
 using NodaTime;
@@ -12,19 +15,115 @@ using Npgsql;
 
 namespace Api.Jobs;
 
-public class JobsInterfae : IJobsInterfae
+public class JobsInterfae(
+    PGContext db,
+    JobNotifier jobNotifier,
+    IEFTransactionDIAccessorService tx,
+    ICurrentServiceId serviceId
+) : IJobsInterfae
 {
-    public Task<IExtendLeaseResult[]> ExtendJobLeases(Guid[] jobIds)
+    public async Task<Dictionary<Guid, IExtendLeaseResult>> ExtendJobLeases(
+        Guid[] jobIds,
+        CancellationToken ct
+    )
     {
-        throw new NotImplementedException();
+        await tx.BeginOrGetTransactionAsync();
+        var now = Now();
+        var jobs = await db.JobDatas.Where(j => jobIds.Contains(j.Id)).ToArrayAsync(ct);
+
+        Dictionary<Guid, IExtendLeaseResult> result = jobs.Distinct()
+            .ToDictionary(
+                j => j.Id,
+                j =>
+                    (IExtendLeaseResult)
+                        new LeaseExtendFailed(LeaseExtendFailReason.NotLeasedCurrently)
+            );
+
+        foreach (var job in jobs)
+        {
+            IExtendLeaseResult value;
+
+            if (job.LeaseEnd < now)
+            {
+                value = new LeaseExtendFailed(LeaseExtendFailReason.NotLeasedCurrently);
+                result[job.Id] = value;
+                continue;
+            }
+
+            if (job.CurrentLeaseExtension >= job.MaxLeaseExtensions)
+            {
+                value = new LeaseExtendFailed(
+                    LeaseExtendFailReason.LeaseExtensionLimitReached
+                );
+                result[job.Id] = value;
+                continue;
+            }
+
+            if (job.LeaserId != serviceId.Id)
+            {
+                value = new LeaseExtendFailed(LeaseExtendFailReason.LeasedBySomeoneElse);
+                result[job.Id] = value;
+                continue;
+            }
+
+            job.CurrentLeaseExtension++;
+            job.LeaseEnd = now + job.LeaseLength;
+        }
+
+        await db.SaveChangesAsync(ct);
+        return result;
     }
 
-    public Task<ILeaseJobResult[]> LeaseJobs(Guid[] jobIds, CancellationToken ct)
+    public async Task<Dictionary<Guid, ILeaseJobResult>> LeaseJobs(
+        Guid[] jobIds,
+        CancellationToken ct
+    )
     {
-        throw new NotImplementedException();
+        await tx.BeginOrGetTransactionAsync();
+        await tx.BeginOrGetTransactionAsync(ct);
+        var jobs = await db.JobDatas.Where(j => jobIds.Contains(j.Id)).ToArrayAsync(ct);
+
+        var result = jobs.Distinct()
+            .ToDictionary(
+                j => j.Id,
+                j => (ILeaseJobResult)new LeasingFailed(LeasingFailReason.JobDoesNotExist)
+            );
+
+        var now = Now();
+
+        foreach (var job in jobs)
+        {
+            if (job.LeaseEnd > now)
+            {
+                result[job.Id] = new LeasingFailed(LeasingFailReason.CurrentlyLeased);
+                continue;
+            }
+
+            if (job.JobState == JobState.Completed)
+            {
+                result[job.Id] = new LeasingFailed(LeasingFailReason.AlreadyCompleted);
+                continue;
+            }
+
+            if (job.MaxRetries <= job.CurrentLeaseExtension)
+            {
+                result[job.Id] = new LeasingFailed(LeasingFailReason.MaxRetryReached);
+                continue;
+            }
+
+            job.CurrentTry++;
+            job.LeasedAt = now;
+            job.LeaseEnd = now + job.LeaseLength;
+
+            result[job.Id] = new NewLeaseEndTime(job.LeaseEnd.Value);
+        }
+
+        await db.SaveChangesAsync(ct);
+
+        return result;
     }
 
-    public Task<JobData[]> LeasePendingJobs(
+    public async Task<JobData[]> LeasePendingJobs(
         uint timeout,
         uint? maxJobs,
         Guid? leaserId,
@@ -32,17 +131,80 @@ public class JobsInterfae : IJobsInterfae
         CancellationToken ct
     )
     {
-        throw new NotImplementedException();
+        if (jobTypes is not null && jobTypes.Length == 0)
+        {
+            return [];
+        }
+        JobData[] jobs = [];
+
+        if (timeout == 0)
+        {
+            await tx.BeginOrGetTransactionAsync();
+            var now = Now();
+
+            var result = await db
+                .JobDatas.FromSqlRaw(
+                    """
+                    UPDATE job_datas j
+                    SET lease_start = @now, 
+                        lease_end = @now + lease_length,
+                        leaser_id = @leaser_id,
+                        job_state = @leased_state
+                        current_try = current_try + 1
+                    WHERE j.id in (
+                        SELECT id FROM job_datas
+                        WHERE (cardinality(@job_types) = 0 OR job_type = ANY(@job_types))
+                            AND (lease_end IS NULL OR lease_end < @now )
+                            AND (NOT job_type = @completed_state)
+                            AND (current_try <= max_retries)
+                        ORDER BY id
+                        FOR UPDATE SKIP LOCKED
+                        )
+                    RETURNING j.*
+
+                    """,
+                    new NpgsqlParameter("now", now),
+                    new NpgsqlParameter("leaser_id", leaserId),
+                    new NpgsqlParameter("leased_state", Models.JobState.HaveOrHadLease),
+                    new NpgsqlParameter("completed_state", Models.JobState.Completed)
+                )
+                .Select(j => new JobData(j.Id, j.JobType))
+                .ToArrayAsync(ct);
+            return result;
+        }
+
+        if (timeout != 0)
+        {
+            jobs = await LeasePendingJobs(0, maxJobs, leaserId, jobTypes, ct);
+        }
+
+        if (jobs.Length > 0)
+        {
+            return jobs;
+        }
+
+        var newJob = await jobNotifier.ListenForNewJob((int)timeout, ct, jobTypes);
+
+        if (newJob != null)
+        {
+            return await LeasePendingJobs(0, maxJobs, leaserId, jobTypes, ct);
+        }
+
+        return jobs;
     }
 
-    public Task<JobMarkAsCompleteResult[]> MarkJobsAsComplete(
-        JobCompletionData[] jobCompletions
+    public Task<Dictionary<Guid, JobMarkAsCompleteResult>> MarkJobsAsComplete(
+        JobCompletionData[] jobCompletions,
+        CancellationToken ct
     )
     {
         throw new NotImplementedException();
     }
 
-    public Task<IPeekJobResult[]> PeekJobs(Guid[] jobIds)
+    public Task<Dictionary<Guid, IPeekJobResult>> PeekJobs(
+        Guid[] jobIds,
+        CancellationToken ct
+    )
     {
         throw new NotImplementedException();
     }
@@ -83,7 +245,7 @@ public class JobsInterfae : IJobsInterfae
 
 public record JobData(Guid JobId, string JobType);
 
-class JobNotifier
+public class JobNotifier
 {
     private readonly NpgsqlConnection _conn;
 
@@ -110,7 +272,11 @@ class JobNotifier
     public event JobEventHandler? NewJobAddedEvent;
     public event JobEventHandler? JobCompletedEvent;
 
-    public Task<JobData?> ListenForNewJob(int msTimeout, CancellationToken ct) =>
+    public Task<JobData?> ListenForNewJob(
+        int msTimeout,
+        CancellationToken ct,
+        string[]? jobTypes = null
+    ) =>
         ListenFor(
             msTimeout,
             (handler) =>
@@ -118,10 +284,15 @@ class JobNotifier
                 NewJobAddedEvent += handler;
                 return Disposable.Create(() => NewJobAddedEvent -= handler);
             },
-            ct
+            ct,
+            jobTypes
         );
 
-    public Task<JobData?> ListenForCompletedJob(int msTimeout, CancellationToken ct) =>
+    public Task<JobData?> ListenForCompletedJob(
+        int msTimeout,
+        CancellationToken ct,
+        string[]? jobTypes = null
+    ) =>
         ListenFor(
             msTimeout,
             (handler) =>
@@ -129,13 +300,15 @@ class JobNotifier
                 JobCompletedEvent += handler;
                 return Disposable.Create(() => JobCompletedEvent -= handler);
             },
-            ct
+            ct,
+            jobTypes
         );
 
     private async Task<JobData?> ListenFor(
         int msTimeout,
         Func<JobEventHandler, IDisposable> sub,
-        CancellationToken ct
+        CancellationToken ct,
+        string[]? jobTypes = null
     )
     {
         Task connTask =
@@ -148,8 +321,11 @@ class JobNotifier
 
         void EventHandler(JobData data)
         {
-            result = data;
-            semaphore.Release();
+            if (jobTypes is null || jobTypes.Contains(data.JobType))
+            {
+                result = data;
+                semaphore.Release();
+            }
         }
         using var eventHandle = sub(EventHandler);
 

@@ -9,5 +9,7 @@ public static class Setup
     public static void RegisterServices(IServiceCollection services)
     {
         services.AddSingleton<JobDTOBuilder>();
+        services.AddSingleton<JobNotifier>();
+        services.AddScoped<IJobsInterfae, JobsInterfae>();
     }
 }
