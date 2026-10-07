@@ -79,7 +79,6 @@ public class JobsInterfae(
         CancellationToken ct
     )
     {
-        await tx.BeginOrGetTransactionAsync();
         await tx.BeginOrGetTransactionAsync(ct);
         var jobs = await db.JobDatas.Where(j => jobIds.Contains(j.Id)).ToArrayAsync(ct);
 
@@ -105,12 +104,14 @@ public class JobsInterfae(
                 continue;
             }
 
-            if (job.MaxRetries <= job.CurrentLeaseExtension)
+            if (job.MaxRetries < job.CurrentTry)
             {
                 result[job.Id] = new LeasingFailed(LeasingFailReason.MaxRetryReached);
                 continue;
             }
 
+            job.LeaserId = serviceId.Id;
+            job.JobState = JobState.HaveOrHadLease;
             job.CurrentTry++;
             job.LeasedAt = now;
             job.LeaseEnd = now + job.LeaseLength;
@@ -146,18 +147,19 @@ public class JobsInterfae(
                 .JobDatas.FromSqlRaw(
                     """
                     UPDATE job_datas j
-                    SET lease_start = @now, 
+                    SET leased_at = @now, 
                         lease_end = @now + lease_length,
                         leaser_id = @leaser_id,
-                        job_state = @leased_state
+                        job_state = @leased_state,
                         current_try = current_try + 1
                     WHERE j.id in (
                         SELECT id FROM job_datas
                         WHERE (cardinality(@job_types) = 0 OR job_type = ANY(@job_types))
                             AND (lease_end IS NULL OR lease_end < @now )
-                            AND (NOT job_type = @completed_state)
+                            AND (NOT job_state = @completed_state)
                             AND (current_try <= max_retries)
                         ORDER BY id
+                        LIMIT @max_jobs
                         FOR UPDATE SKIP LOCKED
                         )
                     RETURNING j.*
@@ -166,7 +168,9 @@ public class JobsInterfae(
                     new NpgsqlParameter("now", now),
                     new NpgsqlParameter("leaser_id", leaserId),
                     new NpgsqlParameter("leased_state", Models.JobState.HaveOrHadLease),
-                    new NpgsqlParameter("completed_state", Models.JobState.Completed)
+                    new NpgsqlParameter("completed_state", Models.JobState.Completed),
+                    new NpgsqlParameter("job_types", jobTypes ?? []),
+                    new NpgsqlParameter("max_jobs", maxJobs ?? int.MaxValue)
                 )
                 .Select(j => new JobData(j.Id, j.JobType))
                 .ToArrayAsync(ct);
@@ -249,23 +253,67 @@ public class JobNotifier
 {
     private readonly NpgsqlConnection _conn;
 
-    public JobNotifier(PGContext db)
+    readonly string _schemaName;
+    private Task listenRegisterer;
+
+    string JobCompletedChannel => $"{_schemaName}_job_completed";
+    string NewJobChannel => $"{_schemaName}_new_job";
+
+    public JobNotifier(IConfiguration config, IHostApplicationLifetime host)
     {
-        _conn = (NpgsqlConnection)db.Database.GetDbConnection();
+        _conn = new NpgsqlConnection(config.GetConnectionString("PG"));
+
+        _schemaName = PGContext.GetSchemaName(config);
+
+        var ct = host.ApplicationStopping;
+
         _conn.Notification += (_, e) =>
         {
             if (
-                e.Payload == $"{db.SchemaName}_new_job"
+                e.Channel == NewJobChannel
                 && e.Payload.TryDeserialize<JobData>() is { } newJobData
             )
                 NewJobAddedEvent?.Invoke(newJobData);
 
             if (
-                e.Payload == $"{db.SchemaName}_job_completed"
+                e.Channel == JobCompletedChannel
                 && e.Payload.TryDeserialize<JobData>() is { } completedJobData
             )
-                NewJobAddedEvent?.Invoke(completedJobData);
+                JobCompletedEvent?.Invoke(completedJobData);
         };
+
+        listenRegisterer = Task.Run(
+            async () =>
+            {
+                while (true)
+                {
+                    try
+                    {
+                        using var cmd = new NpgsqlCommand(
+                            $"LISTEN {NewJobChannel}; LISTEN {JobCompletedChannel};",
+                            _conn
+                        );
+
+                        if (_conn.State != System.Data.ConnectionState.Open)
+                        {
+                            await _conn.OpenAsync(ct);
+                        }
+
+                        await cmd.ExecuteNonQueryAsync(ct);
+                        await _conn.WaitAsync(ct);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        break;
+                    }
+                    catch (Exception)
+                    {
+                        await Task.Delay(TimeSpan.FromSeconds(1), ct);
+                    }
+                }
+            },
+            ct
+        );
     }
 
     public delegate void JobEventHandler(JobData data);
@@ -311,17 +359,15 @@ public class JobNotifier
         string[]? jobTypes = null
     )
     {
-        Task connTask =
-            _conn.State == System.Data.ConnectionState.Closed
-                ? _conn.OpenAsync(ct)
-                : Task.CompletedTask;
-
         var semaphore = new SemaphoreSlim(0, 1);
         JobData? result = null;
 
         void EventHandler(JobData data)
         {
-            if (jobTypes is null || jobTypes.Contains(data.JobType))
+            if (
+                (jobTypes is null || jobTypes.Contains(data.JobType))
+                && semaphore.CurrentCount == 0
+            )
             {
                 result = data;
                 semaphore.Release();
@@ -329,7 +375,6 @@ public class JobNotifier
         }
         using var eventHandle = sub(EventHandler);
 
-        await connTask;
         await await Task.WhenAny(semaphore.WaitAsync(ct), Task.Delay(msTimeout, ct));
         return result;
     }
