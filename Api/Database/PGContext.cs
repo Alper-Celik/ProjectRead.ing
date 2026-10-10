@@ -13,6 +13,9 @@ namespace Api.Database;
 public partial class PGContext(DbContextOptions options, IConfiguration? config = null)
     : DbContext(options)
 {
+    public static string GetSchemaName(IConfiguration config) =>
+        config?["ConnectionStrings:PGSchema"] ?? "public";
+
     public string SchemaName { get; set; } =
         config?["ConnectionStrings:PGSchema"] ?? "public";
 

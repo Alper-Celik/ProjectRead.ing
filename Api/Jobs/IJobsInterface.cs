@@ -13,6 +13,15 @@ public interface IJobsInterfae
 {
     /// <param name="timeout"> if timeout is zero returns current jobs or none if there
     /// isn't </param>
+    public Task<bool> WaitPendingJobs(
+        uint timeout,
+        Guid? leaserId,
+        string[]? jobTypes,
+        CancellationToken ct
+    );
+
+    /// <param name="timeout"> if timeout is zero returns current jobs or none if there
+    /// isn't </param>
     public Task<JobData[]> PeekPendingJobs(
         uint timeout,
         uint? maxJobs,
@@ -31,14 +40,24 @@ public interface IJobsInterfae
         CancellationToken ct
     );
 
-    public Task<IPeekJobResult[]> PeekJobs(Guid[] jobIds);
+    public Task<Dictionary<Guid, IPeekJobResult>> PeekJobs(
+        Guid[] jobIds,
+        CancellationToken ct
+    );
 
-    public Task<ILeaseJobResult[]> LeaseJobs(Guid[] jobIds, CancellationToken ct);
+    public Task<Dictionary<Guid, ILeaseJobResult>> LeaseJobs(
+        Guid[] jobIds,
+        CancellationToken ct
+    );
 
-    public Task<IExtendLeaseResult[]> ExtendJobLeases(Guid[] jobIds);
+    public Task<Dictionary<Guid, IExtendLeaseResult>> ExtendJobLeases(
+        Guid[] jobIds,
+        CancellationToken ct
+    );
 
-    public Task<JobMarkAsCompleteResult[]> MarkJobsAsComplete(
-        JobCompletionData[] jobCompletions
+    public Task<Dictionary<Guid, JobMarkAsCompleteResult>> MarkJobsAsComplete(
+        JobCompletionData[] jobCompletions,
+        CancellationToken ct
     );
 
     /// <summary>
@@ -80,12 +99,13 @@ public interface ILeaseJobResult;
 
 public partial record NewLeaseEndTime : ILeaseJobResult;
 
-public record LeasingFailed(LeaseExtendFailReason Reason) : ILeaseJobResult;
+public record LeasingFailed(LeasingFailReason Reason) : ILeaseJobResult;
 
-public enum LeaseFailReason
+public enum LeasingFailReason
 {
     CurrentlyLeased,
     AlreadyCompleted,
+    MaxRetryReached,
     JobDoesNotExist,
 }
 

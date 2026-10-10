@@ -83,4 +83,19 @@ public static class GeneralUtils
             return null;
         }
     }
+    public static T? TryDeserialize<T>(
+        this string doc,
+        JsonSerializerOptions? opt = null
+    )
+        where T : class
+    {
+        try
+        {
+            return JsonSerializer.Deserialize<T>(doc,opt);
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
+    }
 }
