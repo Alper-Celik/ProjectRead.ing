@@ -13,6 +13,7 @@ public static partial class ErrorCodes
     public const string IS_NOT_DISTINCT = "IS_NOT_DISTINCT";
     public const string ROW_VERSION_MISMATCH = "ROW_VERSION_MISMATCH";
     public const string TAG_ALREADY_EXISTS = "TAG_ALREADY_EXISTS";
+    public const string TAG_FORBIDDEN_SEPARATOR = "TAG_FORBIDDEN_SEPARATOR";
 
     // Mostly Ai Generated - Start
     public const string INVALID_SHA256 = "INVALID_SHA256";

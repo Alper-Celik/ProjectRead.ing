@@ -167,7 +167,7 @@ public class RemoteServiceAuthTests : FilesTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: null,
+                filter: null,
                 order: null,
                 selector: c => c.Nodes(w => new { w.Title })
             )
@@ -195,7 +195,7 @@ public class RemoteServiceAuthTests : FilesTestBase
                 after: null,
                 last: null,
                 before: null,
-                where: null,
+                filter: null,
                 order: null,
                 selector: c => c.Nodes(w => new { w.Title })
             )

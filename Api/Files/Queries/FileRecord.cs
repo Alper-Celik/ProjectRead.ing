@@ -7,6 +7,7 @@ using Api.Auth.Handlers;
 using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
+using Api.Utils;
 using GreenDonut.Data;
 using HotChocolate.Types.Pagination;
 using Microsoft.EntityFrameworkCore;

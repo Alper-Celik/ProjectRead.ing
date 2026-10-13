@@ -53,7 +53,6 @@ public record AddWorkInput
 
     public Instant? WorkPublishedAt { get; init; }
     public Instant? WorkUpdatedAt { get; init; }
-    public List<Queries.WorkIdentifier> WorkIdentifiers { get; init; } = [];
     public required List<Guid> TagIds { get; init; } = [];
     public required List<Guid> AuthorIds { get; init; } = [];
 
@@ -100,8 +99,4 @@ public static partial class AddWorkInputMapper
 
         return work;
     }
-
-    [UserMapping(Default = true)]
-    public static ZonedDateTime FromInstantToZonedDateTime(Instant i) =>
-        MapperUtils.FromInstantToZonedDateTime(i);
 }

@@ -4,6 +4,7 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using Api.Utils;
 using Microsoft.EntityFrameworkCore;
 // Mostly Ai Generated - Start
 using Riok.Mapperly.Abstractions;

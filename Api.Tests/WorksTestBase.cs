@@ -162,7 +162,6 @@ public abstract class WorksTestBase : TestInit
         string? description = null,
         DateTimeOffset? publishedAt = null,
         DateTimeOffset? updatedAt = null,
-        WorkIdentifierInput[]? identifiers = null,
         Guid[]? tagIds = null,
         Guid[]? authorIds = null
     )
@@ -176,7 +175,6 @@ public abstract class WorksTestBase : TestInit
                     Description = description,
                     WorkPublishedAt = publishedAt,
                     WorkUpdatedAt = updatedAt,
-                    WorkIdentifiers = identifiers ?? [],
                     TagIds = tagIds ?? [],
                     AuthorIds = authorIds ?? [],
                 },

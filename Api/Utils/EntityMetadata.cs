@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Alper Çelik <alper@alper-celik.dev>
 //
-// SPDX-License-Identifier: AGPL-3.0-or-later OR Apache-2.0
+// SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.ComponentModel.DataAnnotations.Schema;
+
+namespace Api.Utils;
 
 public interface IDbEntityMetadata : IEntityMetadata
 {
