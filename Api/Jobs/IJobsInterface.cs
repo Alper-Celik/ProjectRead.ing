@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.Text.Json;
+
 using Api.Jobs.Models;
+
 using NodaTime;
 
 namespace Api.Jobs;
@@ -15,7 +17,7 @@ public interface IJobsInterfae
     /// isn't </param>
     public Task<bool> WaitPendingJobs(
         uint timeout,
-        Guid? leaserId,
+        Guid? workerId,
         string[]? jobTypes,
         CancellationToken ct
     );
@@ -25,7 +27,7 @@ public interface IJobsInterfae
     public Task<JobData[]> PeekPendingJobs(
         uint timeout,
         uint? maxJobs,
-        Guid? leaserId,
+        Guid? workerId,
         string[]? jobTypes,
         CancellationToken ct
     );
@@ -35,28 +37,32 @@ public interface IJobsInterfae
     public Task<JobData[]> LeasePendingJobs(
         uint timeout,
         uint? maxJobs,
-        Guid? leaserId,
+        Guid? workerId,
         string[]? jobTypes,
         CancellationToken ct
     );
 
     public Task<Dictionary<Guid, IPeekJobResult>> PeekJobs(
         Guid[] jobIds,
+        Guid? workerId,
         CancellationToken ct
     );
 
     public Task<Dictionary<Guid, ILeaseJobResult>> LeaseJobs(
         Guid[] jobIds,
+        Guid? workerId,
         CancellationToken ct
     );
 
     public Task<Dictionary<Guid, IExtendLeaseResult>> ExtendJobLeases(
         Guid[] jobIds,
+        Guid? workerId,
         CancellationToken ct
     );
 
     public Task<Dictionary<Guid, JobMarkAsCompleteResult>> MarkJobsAsComplete(
         JobCompletionData[] jobCompletions,
+        Guid? workerId,
         CancellationToken ct
     );
 
