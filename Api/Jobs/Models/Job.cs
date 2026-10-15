@@ -4,6 +4,7 @@
 
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Text.Json;
+
 using NodaTime;
 
 namespace Api.Jobs.Models;
@@ -20,7 +21,7 @@ public class JobData
     public JobState JobState { get; set; }
     public Instant? CompletionTime { get; set; }
 
-    public Guid? LeaserId { get; set; }
+    public Guid? WorkerId { get; set; }
     public Instant? LeaseEnd { get; set; }
     public Instant? LeasedAt { get; set; }
     public Duration LeaseLength { get; set; }
