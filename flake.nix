@@ -75,9 +75,9 @@
                   extensions = exts: [
                     exts.system_stats
                   ];
-                  initialScript.before = ''
-                    CREATE EXTENSION system_stats;
-                  '';
+                  # initialScript.before = ''
+                  #   CREATE EXTENSION system_stats;
+                  # '';
                   enable = true;
                 };
 

@@ -1,0 +1,35 @@
+source https://www.nuget.org/api/v2
+
+license_download: true
+
+nuget EFCore.CheckConstraints 10.0.0
+nuget EFCore.NamingConventions 10.0.1
+nuget FluentValidation 12.1.1
+nuget FluentValidation.DependencyInjectionExtensions 12.1.1
+nuget Geralt 4.4.0
+nuget GreenDonut ~> 16.8 prerelease
+nuget GreenDonut.Abstractions ~> 16.8 prerelease
+nuget GreenDonut.Data.EntityFramework ~> 16.8 prerelease
+nuget HotChocolate.AspNetCore ~> 16.8 prerelease
+nuget HotChocolate.AspNetCore.Authorization ~> 16.8 prerelease
+nuget HotChocolate.AspNetCore.CommandLine ~> 16.8 prerelease
+nuget HotChocolate.Data ~> 16.8 prerelease
+nuget HotChocolate.Types.Analyzers ~> 16.8 prerelease
+nuget HotChocolate.Types.NodaTime ~> 16.8 prerelease
+nuget LinqKit.Microsoft.EntityFrameworkCore 10.0.11
+nuget Microsoft.AspNetCore.Mvc.Testing 10.0.11
+nuget Microsoft.EntityFrameworkCore 10.0.11
+nuget Microsoft.EntityFrameworkCore.Design 10.0.11
+nuget Microsoft.EntityFrameworkCore.Relational 10.0.11
+nuget Microsoft.Extensions.ApiDescription.Server 10.0.11
+nuget NodaTime 3.3.3
+nuget NodaTime.Serialization.SystemTextJson 1.4.0
+nuget Npgsql.EntityFrameworkCore.PostgreSQL 10.0.3
+nuget Npgsql.EntityFrameworkCore.PostgreSQL.NodaTime 10.0.3
+nuget Npgsql.NodaTime 10.0.3
+nuget Riok.Mapperly 4.3.1
+nuget SharpGrip.FluentValidation.AutoValidation.Endpoints 2.0.0
+nuget System.Reactive 7.0.0
+nuget TUnit 1.66.27
+nuget TUnit.AspNetCore 1.66.27
+nuget ZeroQL 8.0.0

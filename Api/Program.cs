@@ -2,20 +2,27 @@
 //
 // SPDX-License-Identifier: AGPL-3.0-or-later
 global using static Api.Utils.GeneralUtils;
+
 using System.Text.Json;
 using System.Text.Json.Serialization;
+
 using Api.Auth.Handlers;
 using Api.Database;
 using Api.Utils;
+
 using FluentValidation;
+
 using HotChocolate.Types.NodaTime;
+
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http.Json;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+
 using NodaTime;
+
 using SharpGrip.FluentValidation.AutoValidation.Endpoints.Extensions;
 
 [assembly: DataLoaderModule("ProjectReadingDataLoaders")]
@@ -79,8 +86,6 @@ builder
     })
     .ModifyCostOptions(opt =>
     {
-        opt.Sorting.VariableMultiplier = 1;
-        opt.Filtering.VariableMultiplier = 1;
         opt.MaxFieldCost = 20_000;
         opt.MaxTypeCost = 20_000;
     })
