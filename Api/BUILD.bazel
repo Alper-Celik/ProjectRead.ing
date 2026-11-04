@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik <alper@alper-celik.dev>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later OR Apache-2.0
+
+
+# Mostly Ai Generated - Start
+load("@rules_dotnet//dotnet:defs.bzl", "csharp_binary")
+# DEPS is generated (`deps/Api_deps.bzl`) one label per Api/paket.references
+# entry; run `just bazel-sync-deps` after touching paket files.
+load("//deps:Api_deps.bzl", "DEPS")
+
+package(default_visibility = ["//visibility:public"])
+
+csharp_binary(
+    name = "project_reading_api_server",
+    srcs = glob(
+        ["**/*.cs"],
+        exclude = [
+            "bin/**",
+            "obj/**",
+        ],
+    ),
+    data = [
+        "Api.json",
+    ],
+    appsetting_files = [
+        "appsettings.Development.json",
+        "appsettings.json",
+    ],
+    envs = {
+        # rules_dotnet runs the runfiles copy with cwd=execroot; ASP.NET resolves
+        # ASPNETCORE_CONTENTROOT relative to the binary's base dir
+        # (…/Api/project_reading_api_server/net10.0), so three levels up reaches
+        # the runfiles _main/Api directory containing appsettings*.json.
+        # (dotnet run uses the project dir as content root by default.)
+        "ASPNETCORE_CONTENTROOT": "../../..",
+    },
+    env_inherit = [
+        "ASPNETCORE_ENVIRONMENT",
+        "ConnectionStrings__PG",
+        "PG_PASSWORD",
+    ],
+    deps = DEPS,
+    compiler_options = [
+        # Web SDK injects these via the InterceptorsNamespaces MSBuild property;
+        # csharp_binary has no MSBuild props, so pass the feature explicitly.
+        "/features:InterceptorsNamespaces=Microsoft.AspNetCore.Http.Generated;Microsoft.Extensions.Configuration.Binder.SourceGeneration",
+    ],
+    nullable = "enable",
+    project_sdk = "web",
+    target_frameworks = ["net10.0"],
+)
+# Mostly Ai Generated - End

@@ -1,0 +1,18 @@
+# SPDX-FileCopyrightText: 2026 Alper Çelik <alper@alper-celik.dev>
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later OR Apache-2.0
+
+
+# Mostly Ai Generated - Start
+
+# NixOS: the action sandbox has no /usr/bin, so shell tools used by action
+# scripts (mkdir, basename, ...) must come from the client PATH. Run bazel
+# from the devshell so coreutils is reachable.
+
+common --action_env=PATH
+
+# rules_dotnet nuget import_library resolves transitive deps only when
+# strict_deps is off (checked-in paket graph, not SDK-side resolution).
+common --@rules_dotnet//dotnet/settings:strict_deps=false
+build --@rules_dotnet//dotnet/settings:strict_deps=false
+# Mostly Ai Generated - End

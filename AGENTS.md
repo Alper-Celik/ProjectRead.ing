@@ -21,8 +21,12 @@ dotnet test Api.Tests/Api.Tests.csproj --no-build -- \
 
 just dotnet-build   # dotnet restore --locked-mode + build
 just dotnet-test    # runs tests with coverage (cobertura) + reportgenerator HTML/badges
-just lint           # reuse lint + csharpier check + dotnet format analyzers
+just lint           # reuse lint + csharpier check + dotnet format analyzers + bazel deps freshness
 just format         # csharpier format + dotnet format analyzers
+
+bazel build //Api:project_reading_api_server   # Bazel path (rules_dotnet + Nix SDK); run from the devshell
+just bazel-sync-deps   # regenerate deps/ (paket2bazel + deps/Api_deps.bzl) after changing paket files
+just bazel-deps-check  # fails when deps/ is stale (part of `just lint`)
 
 dotnet csharpier check <files>              # formatting gate used by CI
 ```

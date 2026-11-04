@@ -32,6 +32,14 @@
           ...
         }:
         {
+          # Mostly Ai Generated - Start
+          # .NET SDK consumed by Bazel (dotnet/nix_sdk_repository.bzl).
+          # This is the only nixpkgs package exported to Bazel.
+          packages.bazel-dotnet-sdk = pkgs.dotnetCorePackages.combinePackages [
+            pkgs.dotnetCorePackages.sdk_10_0
+          ];
+          # Mostly Ai Generated - End
+
           devShells.default =
             let
               dotnet = (
@@ -47,6 +55,7 @@
               ];
               packages = with pkgs; [
                 dotnet
+                bazel_9
                 nodejs_22
                 reuse
                 just
