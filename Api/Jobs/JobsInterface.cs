@@ -35,6 +35,7 @@ public class JobsInterfae(
             AND current_try <= max_retries
             AND (@job_types IS NULL OR job_type = ANY(@job_types))
         """;
+    // Mostly Ai Generated - End
 
     static string LeasePendingJobsSql(string schema) =>
             $"""
@@ -55,6 +56,7 @@ public class JobsInterfae(
             RETURNING j.*
             """;
 
+    // Mostly Ai Generated - Start
     static string PeekPendingJobsSql(string schema) =>
             $"""
             SELECT * FROM "{schema}".job_datas
