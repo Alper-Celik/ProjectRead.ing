@@ -5,6 +5,8 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using Api.Auth.Models;
+using Api.QueryTypes;
+using Api.Utils;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Riok.Mapperly.Abstractions;
@@ -72,3 +74,28 @@ public class AuthorTypeConfiguration : IEntityTypeConfiguration<Author>
             .UsingEntity(typeof(Work_Author));
     }
 }
+
+// Mostly Ai Generated - Start
+public record AuthorFilter : LogicalFilter<Author, AuthorFilterPart, AuthorFilter>;
+
+public record AuthorFilterPart : EntityMetadataFilter<Author>
+{
+    public BasicStringFilter? FirstName
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, a => a.FirstName); }
+    }
+
+    public BasicStringFilter? LastName
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, a => a.LastName); }
+    }
+
+    public BasicStringFilter? DisplayName
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, a => a.DisplayName); }
+    }
+}
+// Mostly Ai Generated - End

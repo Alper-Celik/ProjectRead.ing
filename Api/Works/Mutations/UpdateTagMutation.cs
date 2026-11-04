@@ -81,6 +81,22 @@ public record UpdateTagInput : IBasicEntityMetadata
 
             RuleFor(w => w.RowVersion).RowVersionMustMatch(db.WorkTags);
 
+            RuleForEach(w => w.TagNamespace.Value)
+                .Must(GeneralUtils.IsValidTagComponent)
+                .WhenOptionalSet(w => w.TagNamespace)
+                .WithMessage(
+                    "Tag namespace components cannot be empty, contain the '::' separator, or start/end with ':'"
+                )
+                .WithErrorCode(ErrorCodes.TAG_FORBIDDEN_SEPARATOR);
+
+            RuleFor(w => w.TagName.Value)
+                .Must(GeneralUtils.IsValidTagComponent)
+                .WhenOptionalSet(w => w.TagName)
+                .WithMessage(
+                    "Tag name cannot be empty, contain the '::' separator, or start/end with ':'"
+                )
+                .WithErrorCode(ErrorCodes.TAG_FORBIDDEN_SEPARATOR);
+
             RuleFor(w => w)
                 .MustAsync(
                     async (input, ct) =>

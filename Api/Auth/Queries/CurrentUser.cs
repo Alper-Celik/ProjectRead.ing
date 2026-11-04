@@ -6,6 +6,7 @@ using Api.Auth.Handlers;
 using Api.Auth.Models;
 using Api.Auth.Utils;
 using Api.Database;
+using Api.Utils;
 using Riok.Mapperly.Abstractions;
 
 namespace Api.Auth.Queries;

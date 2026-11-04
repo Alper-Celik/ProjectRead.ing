@@ -73,9 +73,5 @@ public static partial class AddAuthorInputMapper
 
         return author;
     }
-
-    [UserMapping(Default = true)]
-    public static ZonedDateTime FromInstantToZonedDateTime(Instant i) =>
-        MapperUtils.FromInstantToZonedDateTime(i);
 }
 // Mostly Ai Generated - End

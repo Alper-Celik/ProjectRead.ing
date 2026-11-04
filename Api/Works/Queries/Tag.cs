@@ -5,9 +5,11 @@
 using Api.Auth.Handlers;
 using Api.Auth.Utils;
 using Api.Database;
+using Api.Utils;
 using Api.Works.Models;
 using GreenDonut.Data;
 using HotChocolate.Types.Pagination;
+using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Riok.Mapperly.Abstractions;
 using static Api.Works.Queries.WorkDataLoaders;
@@ -18,7 +20,6 @@ namespace Api.Works.Queries;
 public static partial class TagQuery
 {
     [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.TagRead)]
-    [UseFiltering]
     [UseSorting]
     public static async Task<PageConnection<Tag>> GetTags(
         [Service] PGContext db,
@@ -26,11 +27,16 @@ public static partial class TagQuery
         [Service] TagNode.ITagByIdDataLoader tagById,
         QueryContext<Tag> qc,
         PagingArguments pg,
+        TagFilter? filter,
         CancellationToken ct
     )
     {
-        return await db
-            .WorkTags.Where(wt => wt.OwnerId == userId.Id)
+        var query = db.WorkTags.Where(wt => wt.OwnerId == userId.Id);
+        if (filter is not null)
+        {
+            query = query.Where(wt => filter.Filter.Invoke(wt));
+        }
+        return await query
             .ProjectToDto()
             .WithQueryContext(qc)
             .ToPageWithDataLoaderAsync(pg, tagById, ct);
@@ -43,7 +49,6 @@ public static partial class TagNode
     public interface ITagByIdDataLoader : IBatchDataLoader<Guid, Tag>;
 
     [PermissionCheckAuthorize(Auth.Models.UserPermissionBits.WorkRead)]
-    [UseFiltering]
     [UseSorting]
     [GraphQLName("Works")]
     public static async Task<PageConnection<Work>> GetWorksByTag(
@@ -53,12 +58,18 @@ public static partial class TagNode
         [Service] IWorkByIdDataLoader workById,
         QueryContext<Work> qc,
         PagingArguments pagingArguments,
+        WorkFilter? filter,
         CancellationToken ct
     )
     {
-        return await db
+        var query = db
             .Works.Where(w => w.OwnerId == userId.Id)
-            .Where(w => w.WorkTags.Select(t => t.Id).Contains(tag.Id))
+            .Where(w => w.WorkTags.Select(t => t.Id).Contains(tag.Id));
+        if (filter is not null)
+        {
+            query = query.Where(w => filter.Filter.Invoke(w));
+        }
+        return await query
             .ProjectToDto()
             .WithQueryContext(qc)
             .ToPageWithDataLoaderAsync(pagingArguments, workById, ct);

@@ -3,7 +3,9 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 
 using System.Text.Json;
+
 using Api.Jobs.Models;
+
 using NodaTime;
 
 namespace Api.Jobs;
@@ -13,10 +15,19 @@ public interface IJobsInterfae
 {
     /// <param name="timeout"> if timeout is zero returns current jobs or none if there
     /// isn't </param>
+    public Task<bool> WaitPendingJobs(
+        uint timeout,
+        Guid? workerId,
+        string[]? jobTypes,
+        CancellationToken ct
+    );
+
+    /// <param name="timeout"> if timeout is zero returns current jobs or none if there
+    /// isn't </param>
     public Task<JobData[]> PeekPendingJobs(
         uint timeout,
         uint? maxJobs,
-        Guid? leaserId,
+        Guid? workerId,
         string[]? jobTypes,
         CancellationToken ct
     );
@@ -26,19 +37,33 @@ public interface IJobsInterfae
     public Task<JobData[]> LeasePendingJobs(
         uint timeout,
         uint? maxJobs,
-        Guid? leaserId,
+        Guid? workerId,
         string[]? jobTypes,
         CancellationToken ct
     );
 
-    public Task<IPeekJobResult[]> PeekJobs(Guid[] jobIds);
+    public Task<Dictionary<Guid, IPeekJobResult>> PeekJobs(
+        Guid[] jobIds,
+        Guid? workerId,
+        CancellationToken ct
+    );
 
-    public Task<ILeaseJobResult[]> LeaseJobs(Guid[] jobIds, CancellationToken ct);
+    public Task<Dictionary<Guid, ILeaseJobResult>> LeaseJobs(
+        Guid[] jobIds,
+        Guid? workerId,
+        CancellationToken ct
+    );
 
-    public Task<IExtendLeaseResult[]> ExtendJobLeases(Guid[] jobIds);
+    public Task<Dictionary<Guid, IExtendLeaseResult>> ExtendJobLeases(
+        Guid[] jobIds,
+        Guid? workerId,
+        CancellationToken ct
+    );
 
-    public Task<JobMarkAsCompleteResult[]> MarkJobsAsComplete(
-        JobCompletionData[] jobCompletions
+    public Task<Dictionary<Guid, JobMarkAsCompleteResult>> MarkJobsAsComplete(
+        JobCompletionData[] jobCompletions,
+        Guid? workerId,
+        CancellationToken ct
     );
 
     /// <summary>
@@ -80,12 +105,13 @@ public interface ILeaseJobResult;
 
 public partial record NewLeaseEndTime : ILeaseJobResult;
 
-public record LeasingFailed(LeaseExtendFailReason Reason) : ILeaseJobResult;
+public record LeasingFailed(LeasingFailReason Reason) : ILeaseJobResult;
 
-public enum LeaseFailReason
+public enum LeasingFailReason
 {
     CurrentlyLeased,
     AlreadyCompleted,
+    MaxRetryReached,
     JobDoesNotExist,
 }
 

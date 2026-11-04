@@ -4,7 +4,11 @@
 
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using System.Linq.Expressions;
 using Api.Auth.Models;
+using Api.QueryTypes;
+using Api.Utils;
+using LinqKit;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Riok.Mapperly.Abstractions;
@@ -12,10 +16,19 @@ using Riok.Mapperly.Abstractions;
 namespace Api.Works.Models;
 
 [Table("works")]
-[Index(nameof(WorkIdentifiers))]
-public class Work : IDbEntityMetadata
+public class Work
+    : IDbEntityMetadata,
+        IHasConnection<Work, Author>,
+        IHasConnection<Work, WorkTag>
 {
     public static byte IdPostfix => (byte)IdPostfixes.Work;
+
+    [MapperIgnore]
+    public static IReadOnlyDictionary<Type, LambdaExpression> Connections =>
+        new Dictionary<Type, LambdaExpression>([
+            new(typeof(Author), static (Work w) => w.Authors),
+            new(typeof(WorkTag), static (Work t) => t.WorkTags),
+        ]);
 
     [Key]
     public Guid Id { get; set; }
@@ -31,9 +44,8 @@ public class Work : IDbEntityMetadata
 
     public string? Description { get; set; }
 
-    public NodaTime.ZonedDateTime? WorkPublishedAt { get; set; }
-    public NodaTime.ZonedDateTime? WorkUpdatedAt { get; set; }
-    public List<WorkIdentifier> WorkIdentifiers { get; set; } = [];
+    public NodaTime.Instant? WorkPublishedAt { get; set; }
+    public NodaTime.Instant? WorkUpdatedAt { get; set; }
 
     // Navigation Properties
     [MapperIgnore]
@@ -52,12 +64,38 @@ public class Work : IDbEntityMetadata
     public UserEF Owner { get; set; } = null!;
 }
 
-public record WorkIdentifier(string WorkIdentifierType, string WorkIdentifierValue);
+public record WorkFilter : LogicalFilter<Work, WorkFilterPart, WorkFilter>;
 
-public class WorkTypeConfiguration : IEntityTypeConfiguration<Work>
+//TODO: add text searches with VectorChord-bm25 when fts and embedding work starts
+public record WorkFilterPart : EntityMetadataFilter<Work>
 {
-    public void Configure(EntityTypeBuilder<Work> builder)
+    public TimeFilter? WorkPublishedAt
     {
-        builder.ComplexCollection(w => w.WorkIdentifiers, wid => wid.ToJson());
+        get { return (TimeFilter?)GetOneOf(); }
+        set { SetOneOf(value, w => w.WorkPublishedAt); }
+    }
+
+    public TimeFilter? WorkUpdatedAt
+    {
+        get { return (TimeFilter?)GetOneOf(); }
+        set { SetOneOf(value, w => w.WorkUpdatedAt); }
+    }
+
+    public BasicStringFilter? Title
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, w => w.Title); }
+    }
+
+    public BasicStringFilter? Description
+    {
+        get { return (BasicStringFilter?)GetOneOf(); }
+        set { SetOneOf(value, w => w.Description); }
+    }
+
+    public WorkToAuthorConnectionFilter? Authors
+    {
+        get { return (WorkToAuthorConnectionFilter?)GetOneOf(); }
+        set { SetOneOf(value); }
     }
 }
